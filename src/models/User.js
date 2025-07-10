@@ -38,6 +38,17 @@ const userSchema = new mongoose.Schema(
         donatedAt: { type: Date, default: Date.now },
       },
     ],
+
+    // Verification & Status
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    status: {
+      type: String,
+      enum: ['active', 'suspended'],
+      default: 'active',
+    },
   },
   { timestamps: true }
 );
