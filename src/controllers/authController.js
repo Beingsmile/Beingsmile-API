@@ -21,7 +21,7 @@ export const register = async (req, res) => {
 
     const token = generateToken(user._id); // Generate JWT token
 
-    res.cookie('jwttoken', token, COOKIE_OPTIONS);
+    res.cookie("jwttoken", token, COOKIE_OPTIONS);
     res.status(201).json({ user });
   } catch (err) {
     console.log(err);
@@ -46,4 +46,10 @@ export const login = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
+};
+
+// Logout route
+export const logout = async (req, res) => {
+  res.clearCookie("jwttoken", COOKIE_OPTIONS);
+  res.status(200).json({ message: "Logged out successfully" });
 };
