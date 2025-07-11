@@ -1,5 +1,5 @@
 import User from "../models/User.js";
-import generateToken from "../utils/jwt.js";
+import generateToken, { COOKIE_OPTIONS } from "../utils/jwt.js";
 
 // Register
 export const register = async (req, res) => {
@@ -21,8 +21,10 @@ export const register = async (req, res) => {
 
     const token = generateToken(user._id); // Generate JWT token
 
-    res.status(201).json({ user, token });
+    res.cookie('jwttoken', token, COOKIE_OPTIONS);
+    res.status(201).json({ user });
   } catch (err) {
+    console.log(err);
     res.status(500).json({ message: err.message });
   }
 };
