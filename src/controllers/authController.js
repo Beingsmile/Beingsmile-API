@@ -42,7 +42,8 @@ export const login = async (req, res) => {
 
     const token = generateToken(user._id); // Generate JWT token
 
-    res.status(200).json({ user, token });
+    res.cookie("jwttoken", token, COOKIE_OPTIONS);
+    res.status(200).json({ user });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

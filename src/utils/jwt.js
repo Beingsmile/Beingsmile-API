@@ -11,7 +11,7 @@ export const COOKIE_OPTIONS = {
   httpOnly: true, // Prevents client-side JavaScript from accessing the cookie
   secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
   sameSite: 'Strict', // Helps prevent CSRF attacks
-  maxAge: 1 * 60 * 1000, // 15 minutes
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   path: '/',
 }
 

@@ -17,7 +17,7 @@ export const validateInput = [
 // RATE LIMITING for login and registration
 // ========================================
 export const authRateLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 5, // 5 login attempts per IP
+  windowMs: 1 * 60 * 1000, // 1 minutes
+  max: 15, // 15 login attempts per IP
   message: 'Too many attempts. Try again later.',
 });
