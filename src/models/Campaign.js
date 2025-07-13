@@ -88,6 +88,7 @@ const campaignSchema = new mongoose.Schema(
       {
         title: String,
         content: String,
+        images: [String],
         postedAt: {
           type: Date,
           default: Date.now,
