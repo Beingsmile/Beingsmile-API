@@ -29,8 +29,14 @@ const userSchema = new mongoose.Schema(
       default: 'user',
     },
     // Other fields
-    avatar: String,
-    bio: String,
+    avatar: {
+      type: String,
+      default: '', // Placeholder URL
+    },
+    bio: {
+      type: String,
+      default: '', // Placeholder bio
+    },
     donatedCampaigns: [
       {
         campaign: { type: mongoose.Schema.Types.ObjectId, ref: 'Campaign' },
