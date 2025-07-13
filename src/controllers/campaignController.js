@@ -347,29 +347,3 @@ export const suspendCampaign = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
-
-// Auto-complete campaigns that have ended
-export const autoCompleteCampaigns = async (req, res) => {
-  try {
-    const now = new Date();
-
-    // Only update campaigns that are active and endDate has passed
-    const result = await Campaign.updateMany(
-      {
-        status: 'active',
-        endDate: { $lte: now }
-      },
-      {
-        $set: { status: 'completed' }
-      }
-    );
-
-    res.status(200).json({
-      message: 'Auto-completion completed successfully',
-      updatedCount: result.modifiedCount,
-    });
-  } catch (err) {
-    console.error('Error auto-completing campaigns:', err);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
