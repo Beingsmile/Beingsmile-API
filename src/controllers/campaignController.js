@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Campaign from "../models/Campaign.js";
 import User from "../models/User.js";
 
@@ -36,6 +37,10 @@ export const createCampaign = async (req, res) => {
 export const getCampaignById = async (req, res) => {
   try {
     const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid campaign ID" });
+    }
 
     const campaign = await Campaign.findById(id).populate(
       "creator",
@@ -125,6 +130,11 @@ export const getAllCampaigns = async (req, res) => {
 export const deleteCampaign = async (req, res) => {
   const { id: campaignId } = req.params;
 
+  if (!mongoose.Types.ObjectId.isValid(campaignId)) {
+      return res.status(400).json({ message: "Invalid campaign ID" });
+    }
+
+  
   try {
     // Find the campaign
     const campaign = await Campaign.findById(campaignId);
@@ -155,7 +165,6 @@ export const deleteCampaign = async (req, res) => {
   }
 };
 
-// Search and filter campaigns
 // Search and filter campaigns
 export const getFilteredCampaigns = async (req, res) => {
   try {
@@ -237,6 +246,71 @@ export const getFilteredCampaigns = async (req, res) => {
     });
   } catch (err) {
     console.error("Error fetching campaigns:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Add an update to a campaign
+export const addCampaignUpdate = async (req, res) => {
+  try {
+    const { id } = req.params; // Campaign ID 
+    const { title, content, images } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid campaign ID" });
+    }
+
+    if (!req.uid) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const campaign = await Campaign.findById(id);
+
+    if (!campaign) {
+      return res.status(404).json({ message: "Campaign not found" });
+    }
+
+    // Only creator can post updates
+    if (campaign.creator.toString() !== req.uid) {
+      return res.status(403).json({ message: "Forbidden: Not the campaign creator" });
+    }
+
+    const newUpdate = {
+      title,
+      content,
+      images,
+      postedAt: new Date(),
+    };
+
+    campaign.updates.unshift(newUpdate); // Add to beginning of the array
+
+    await campaign.save();
+
+    res.status(200).json({ message: "Update added successfully", updates: campaign.updates });
+  } catch (err) {
+    console.error("Error adding update:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Get all updates for a specific campaign
+export const getCampaignUpdates = async (req, res) => {
+  try {
+    const { id } = req.params; // Campaign ID 
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid campaign ID" });
+    }
+
+    const campaign = await Campaign.findById(id);
+
+    if (!campaign) {
+      return res.status(404).json({ message: "Campaign not found" });
+    }
+
+    res.status(200).json({ updates: campaign.updates });
+  } catch (err) {
+    console.error("Error fetching updates:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
