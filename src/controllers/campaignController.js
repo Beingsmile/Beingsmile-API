@@ -50,7 +50,7 @@ export const getCampaignById = async (req, res) => {
   }
 };
 
-// get campaigns by creator ID
+// Get campaigns by creator ID with pagination
 export const getUserCampaigns = async (req, res) => {
   try {
     const token = req.cookies?.jwttoken;
@@ -63,12 +63,29 @@ export const getUserCampaigns = async (req, res) => {
       return res.status(401).json({ message: 'Invalid token' });
     }
 
-    // Fetch user campaigns
-    const campaigns = await Campaign.find({ creator: req.uid });
+    // Get page number from query, default = 1
+    const page = parseInt(req.query.page) || 1;
+    const limit = 10;
+    const skip = (page - 1) * limit;
 
-    res.status(200).json({ campaigns });
+    // Get total count of campaigns by user (for frontend pagination)
+    const total = await Campaign.countDocuments({ creator: req.uid });
+
+    // Fetch paginated campaigns
+    const campaigns = await Campaign.find({ creator: req.uid })
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 }); // latest first
+
+    res.status(200).json({
+      campaigns,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    });
   } catch (err) {
     console.error('Error fetching user campaigns:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };
+
