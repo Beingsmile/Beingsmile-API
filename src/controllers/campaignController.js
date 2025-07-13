@@ -89,3 +89,29 @@ export const getUserCampaigns = async (req, res) => {
   }
 };
 
+// Get all campaigns 
+export const getAllCampaigns = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = 10;
+    const skip = (page - 1) * limit;
+
+    const total = await Campaign.countDocuments();
+
+    const campaigns = await Campaign.find()
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 }) // newest first
+      .populate('creator', 'name email'); // include creator info
+
+    res.status(200).json({
+      campaigns,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    });
+  } catch (err) {
+    console.error('Error fetching campaigns:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
