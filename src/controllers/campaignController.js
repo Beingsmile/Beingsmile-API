@@ -49,3 +49,26 @@ export const getCampaignById = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+// get campaigns by creator ID
+export const getUserCampaigns = async (req, res) => {
+  try {
+    const token = req.cookies?.jwttoken;
+
+    if (!token) {
+      return res.status(401).json({ message: 'No token, authorization denied' });
+    }
+
+    if (!req.uid) {
+      return res.status(401).json({ message: 'Invalid token' });
+    }
+
+    // Fetch user campaigns
+    const campaigns = await Campaign.find({ creator: req.uid });
+
+    res.status(200).json({ campaigns });
+  } catch (err) {
+    console.error('Error fetching user campaigns:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
