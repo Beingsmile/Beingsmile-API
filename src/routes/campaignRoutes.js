@@ -1,5 +1,5 @@
 import express from 'express';
-import { createCampaign, deleteCampaign, getAllCampaigns, getCampaignById, getUserCampaigns, getFilteredCampaigns, addCampaignUpdate, getCampaignUpdates } from '../controllers/campaignController.js';
+import { createCampaign, deleteCampaign, getAllCampaigns, getCampaignById, getUserCampaigns, getFilteredCampaigns, addCampaignUpdate, getCampaignUpdates, suspendCampaign } from '../controllers/campaignController.js';
 import { authenticate } from '../middleware/campaignMiddleware.js';
 
 const router = express.Router();
@@ -12,6 +12,7 @@ router.get('/search', getFilteredCampaigns);
 router.get('/:id', getCampaignById);
 router.get("/:id/updates", getCampaignUpdates);
 router.post("/:id/updates", authenticate, addCampaignUpdate);
+router.patch('/:id/suspend', authenticate, suspendCampaign);
 router.delete("/:id", authenticate, deleteCampaign);
 
 export default router;

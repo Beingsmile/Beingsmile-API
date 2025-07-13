@@ -314,3 +314,36 @@ export const getCampaignUpdates = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+// Suspend campaign (admin/mod only)
+export const suspendCampaign = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid campaign ID' });
+    }
+
+    // Check campaign exists
+    const campaign = await Campaign.findById(id);
+    if (!campaign) {
+      return res.status(404).json({ message: 'Campaign not found' });
+    }
+
+    // Get user from DB to verify role
+    const user = await User.findById(req.uid);
+    if (!user || (user.role !== 'admin' && user.role !== 'moderator')) {
+      return res.status(403).json({ message: 'Forbidden: You are not authorized' });
+    }
+
+    // Suspend the campaign
+    campaign.status = 'suspended';
+    await campaign.save();
+
+    res.status(200).json({ message: 'Campaign suspended successfully', campaign });
+  } catch (err) {
+    console.error('Error suspending campaign:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
