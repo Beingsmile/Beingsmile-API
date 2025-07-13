@@ -5,7 +5,7 @@ dotenv.config();
 
 // generate jwt token
 const generateToken = (userId) => {
-  return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: '7d' }); // jwt expires in 7 days
+  return jwt.sign({ id: userId, role }, process.env.JWT_SECRET, { expiresIn: '7d' }); // jwt expires in 7 days
 };
 
 // generate uid from jwt token

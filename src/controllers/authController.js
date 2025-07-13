@@ -19,7 +19,7 @@ export const register = async (req, res) => {
       email,
     });
 
-    const token = generateToken(user._id); // Generate JWT token
+    const token = generateToken(user._id, 'user'); // Generate JWT token
 
     res.cookie("jwttoken", token, COOKIE_OPTIONS);
     res.status(201).json({ user });
@@ -40,7 +40,7 @@ export const login = async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    const token = generateToken(user._id); // Generate JWT token
+    const token = generateToken(user._id, 'user'); // Generate JWT token
 
     res.cookie("jwttoken", token, COOKIE_OPTIONS);
     res.status(200).json({ user });
