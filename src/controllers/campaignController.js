@@ -1,5 +1,5 @@
-import Campaign from '../models/Campaign.js';
-import User from '../models/User.js';
+import Campaign from "../models/Campaign.js";
+import User from "../models/User.js";
 
 // create new campaign
 export const createCampaign = async (req, res) => {
@@ -37,8 +37,10 @@ export const getCampaignById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const campaign = await Campaign.findById(id)
-      .populate('creator', 'avatar name email') // Optional: include creator's info
+    const campaign = await Campaign.findById(id).populate(
+      "creator",
+      "avatar name email"
+    ); // Optional: include creator's info
 
     if (!campaign) {
       return res.status(404).json({ message: "Campaign not found" });
@@ -57,11 +59,13 @@ export const getUserCampaigns = async (req, res) => {
     const token = req.cookies?.jwttoken;
 
     if (!token) {
-      return res.status(401).json({ message: 'No token, authorization denied' });
+      return res
+        .status(401)
+        .json({ message: "No token, authorization denied" });
     }
 
     if (!req.uid) {
-      return res.status(401).json({ message: 'Invalid token' });
+      return res.status(401).json({ message: "Invalid token" });
     }
 
     // Get page number from query, default = 1
@@ -85,12 +89,12 @@ export const getUserCampaigns = async (req, res) => {
       totalPages: Math.ceil(total / limit),
     });
   } catch (err) {
-    console.error('Error fetching user campaigns:', err);
-    res.status(500).json({ message: 'Server error' });
+    console.error("Error fetching user campaigns:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-// Get all campaigns 
+// Get all campaigns
 export const getAllCampaigns = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -103,7 +107,7 @@ export const getAllCampaigns = async (req, res) => {
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 }) // newest first
-      .populate('creator', 'name email'); // include creator info
+      .populate("creator", "name email"); // include creator info
 
     res.status(200).json({
       campaigns,
@@ -112,8 +116,8 @@ export const getAllCampaigns = async (req, res) => {
       totalPages: Math.ceil(total / limit),
     });
   } catch (err) {
-    console.error('Error fetching campaigns:', err);
-    res.status(500).json({ message: 'Server error' });
+    console.error("Error fetching campaigns:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -141,11 +145,98 @@ export const deleteCampaign = async (req, res) => {
       await Campaign.findByIdAndDelete(campaignId);
       return res.status(200).json({ message: "Campaign deleted successfully" });
     } else {
-      return res.status(403).json({ message: "Forbidden: You cannot delete this campaign" });
+      return res
+        .status(403)
+        .json({ message: "Forbidden: You cannot delete this campaign" });
     }
-
   } catch (err) {
     console.error("Error deleting campaign:", err);
     return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Search and filter campaigns
+// Search and filter campaigns
+export const getFilteredCampaigns = async (req, res) => {
+  try {
+    const {
+      category,
+      status,
+      search,
+      goalMin,
+      goalMax,
+      raisedMin,
+      raisedMax,
+      dateFrom,
+      dateTo,
+      page = 1,
+      limit = 10,
+    } = req.query;
+
+    const query = {};
+
+    if (category) query.category = category;
+    if (status) query.status = status;
+
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    if (goalMin || goalMax) {
+      query.goalAmount = {};
+      if (goalMin) query.goalAmount.$gte = Number(goalMin);
+      if (goalMax) query.goalAmount.$lte = Number(goalMax);
+    }
+
+    if (raisedMin || raisedMax) {
+      query.currentAmount = {};
+      if (raisedMin) query.currentAmount.$gte = Number(raisedMin);
+      if (raisedMax) query.currentAmount.$lte = Number(raisedMax);
+    }
+
+    if (dateFrom || dateTo) {
+      query.startDate = {};
+      if (dateFrom) query.startDate.$gte = new Date(dateFrom);
+      if (dateTo) query.startDate.$lte = new Date(dateTo);
+    }
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    // Sort by status priority and createdAt
+    const campaigns = await Campaign.aggregate([
+      { $match: query },
+      {
+        $addFields: {
+          statusPriority: {
+            $switch: {
+              branches: [
+                { case: { $eq: ["$status", "active"] }, then: 1 },
+                { case: { $eq: ["$status", "completed"] }, then: 2 },
+                { case: { $eq: ["$status", "suspended"] }, then: 3 },
+              ],
+              default: 4,
+            },
+          },
+        },
+      },
+      { $sort: { statusPriority: 1, createdAt: -1 } },
+      { $skip: skip },
+      { $limit: Number(limit) },
+    ]);
+
+    const total = await Campaign.countDocuments(query);
+
+    res.status(200).json({
+      campaigns,
+      total,
+      page: Number(page),
+      totalPages: Math.ceil(total / limit),
+    });
+  } catch (err) {
+    console.error("Error fetching campaigns:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };
