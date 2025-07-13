@@ -5,10 +5,17 @@ dotenv.config();
 
 // generate jwt token
 const generateToken = (userId) => {
-  return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: '7d' }); // jwt expires in 7 days
 };
 
-
+// generate uid from jwt token
+export const verifyToken = (token) => {
+  try {
+    return jwt.verify(token, process.env.JWT_SECRET);
+  } catch (err) {
+    return null;
+  }
+};
 
 export const COOKIE_OPTIONS = {
   httpOnly: true, // Prevents client-side JavaScript from accessing the cookie
