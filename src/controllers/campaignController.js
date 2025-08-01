@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
 import Campaign from "../models/Campaign.js";
 import User from "../models/User.js";
+import { uploadImage } from '../utils/cloudinaryUtils.js';
 
-// create new campaign
 export const createCampaign = async (req, res) => {
   try {
     const {
@@ -10,18 +10,36 @@ export const createCampaign = async (req, res) => {
       description,
       category,
       goalAmount,
-      coverImage,
-      images,
+      coverImage, // Can be a URL or base64 string
+      images,     // Array of more image URLs
       endDate,
     } = req.body;
 
+    // Get user details from DB using uid
+    const user = await User.findById(req.uid).select('name');
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    // Upload coverImage to Cloudinary
+    const uploadedCover = await uploadImage(coverImage, `campaign_covers/${Date.now()}`);
+
+    // Upload each image in 'images' array
+    const uploadedImages = [];
+    if (images && Array.isArray(images)) {
+      for (const img of images) {
+        const result = await uploadImage(img, `campaign_images/${Date.now()}_${Math.random()}`);
+        uploadedImages.push(result.secure_url);
+      }
+    }
+
+    // Create campaign in DB
     const newCampaign = await Campaign.create({
       title,
       description,
       category,
       goalAmount,
-      coverImage,
-      images,
+      coverImage: uploadedCover.secure_url, // Cloudinary image
+      images: uploadedImages,
+      creatorUsername: user.name,
       endDate,
       creator: req.uid, // From JWT middleware
     });
@@ -179,7 +197,7 @@ export const getFilteredCampaigns = async (req, res) => {
       dateFrom,
       dateTo,
       page = 1,
-      limit = 10,
+      limit = 6,
     } = req.query;
 
     const query = {};
