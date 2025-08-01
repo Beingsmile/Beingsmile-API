@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import User from "../models/User.js";
 import generateToken, { COOKIE_OPTIONS } from "../utils/jwt.js";
 
@@ -53,4 +54,48 @@ export const login = async (req, res) => {
 export const logout = async (req, res) => {
   res.clearCookie("jwttoken", COOKIE_OPTIONS);
   res.status(200).json({ message: "Logged out successfully" });
+};
+
+// get user by Firebase UID
+export const getUserByFirebaseUid = async (req, res) => {
+  try {
+    const { firebaseUid } = req.params;
+
+    if (!firebaseUid) {
+      return res.status(400).json({ message: "Firebase UID is required" });
+    }
+
+    const user = await User.findOne({ firebaseUid });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({ user });
+  } catch (error) {
+    console.error("Error fetching user by Firebase UID:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// get user by ID
+export const getUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({ user });
+  } catch (error) {
+    console.error("Error fetching user by ID:", error);
+    res.status(500).json({ message: "Server error" });
+  }
 };
