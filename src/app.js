@@ -35,7 +35,12 @@ app.use(cors({
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
-app.use(express.json());  // For parsing application/json
+// app.use(express.json());  // For parsing application/json
+// Increase the body size limit to 50MB for JSON requests
+app.use(express.json({ limit: '50mb' }));
+
+// Increase the body size limit to 50MB for URL encoded form data
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(morgan('dev'));  // Logging middleware for development
 app.use(cookieParser());  // For parsing cookies
 
