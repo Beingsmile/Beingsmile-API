@@ -107,7 +107,7 @@ export const getUserById = async (req, res) => {
 };
 
 // Check if user exists by Firebase UID
-export const checkUserExists = async (req, res) => {
+export const checkUserExistsWithJWT = async (req, res) => {
   try {
     const { firebaseUid } = req.params;
 
@@ -121,6 +121,9 @@ export const checkUserExists = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    const token = generateToken(user._id, 'user'); // Generate JWT token
+
+    res.cookie("jwttoken", token, COOKIE_OPTIONS);
     res.status(200).json({ user });
   } catch (error) {
     console.error("Error fetching user by Firebase UID:", error);
