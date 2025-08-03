@@ -71,6 +71,9 @@ export const getUserByFirebaseUid = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    const token = generateToken(user._id, 'user'); // Generate JWT token
+
+    res.cookie("jwttoken", token, COOKIE_OPTIONS);
     res.status(200).json({ user });
   } catch (error) {
     console.error("Error fetching user by Firebase UID:", error);
@@ -93,9 +96,34 @@ export const getUserById = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    const token = generateToken(user._id, 'user'); // Generate JWT token
+
+    res.cookie("jwttoken", token, COOKIE_OPTIONS);
     res.status(200).json({ user });
   } catch (error) {
     console.error("Error fetching user by ID:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Check if user exists by Firebase UID
+export const checkUserExists = async (req, res) => {
+  try {
+    const { firebaseUid } = req.params;
+
+    if (!firebaseUid) {
+      return res.status(400).json({ message: "Firebase UID is required" });
+    }
+
+    const user = await User.findOne({ firebaseUid });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({ user });
+  } catch (error) {
+    console.error("Error fetching user by Firebase UID:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
