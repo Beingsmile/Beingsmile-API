@@ -365,3 +365,74 @@ export const suspendCampaign = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+// Add comment to campaign
+export const addComment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { text, user, name } = req.body;
+
+    const campaign = await Campaign.findByIdAndUpdate(
+      id,
+      {
+        $push: {
+          comments: {
+            user: user,
+            name,
+            text
+          }
+        }
+      },
+      { new: true }
+    ).populate('comments.user', 'name avatar');
+
+    res.status(200).json(campaign.comments);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Add reply to comment
+export const addReply = async (req, res) => {
+  try {
+    const { campaignId, commentId } = req.params;
+    const { text, userId, username } = req.body;
+
+    const campaign = await Campaign.findOneAndUpdate(
+      { _id: campaignId, 'comments._id': commentId },
+      {
+        $push: {
+          'comments.$.replies': {
+            user: userId,
+            username,
+            text
+          }
+        }
+      },
+      { new: true }
+    );
+
+    res.status(200).json(campaign.comments);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Get comments
+export const getComments = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const campaign = await Campaign.findById(id)
+      .populate('comments.user', 'name avatar')
+      .populate('comments.replies.user', 'name avatar');
+
+    // Sort comments by createdAt date (newest first)
+    const sortedComments = campaign.comments.sort((a, b) => {
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+
+    res.status(200).json(sortedComments);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

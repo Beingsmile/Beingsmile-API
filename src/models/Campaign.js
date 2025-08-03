@@ -115,6 +115,51 @@ const campaignSchema = new mongoose.Schema(
       enum: ["active", "completed", "suspended"],
       default: "active",
     },
+
+    comments: [
+      {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          required: true
+        },
+        name: {
+          type: String,
+          required: true
+        },
+        text: {
+          type: String,
+          required: [true, "Comment text is required"],
+          maxlength: [1000, "Comment cannot exceed 1000 characters"]
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now
+        },
+        replies: [
+          {
+            user: {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: "User",
+              required: true
+            },
+            name: {
+              type: String,
+              required: true
+            },
+            text: {
+              type: String,
+              required: true,
+              maxlength: [1000, "Reply cannot exceed 1000 characters"]
+            },
+            createdAt: {
+              type: Date,
+              default: Date.now
+            }
+          }
+        ]
+      }
+    ]
   },
   { timestamps: true } // Adds createdAt, updatedAt
 );
