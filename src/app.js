@@ -12,10 +12,29 @@ const app = express();
 
 // Middleware
 app.use(helmet());        // Security middleware
-app.use(cors({origin: 'http://localhost:5173',
+// app.use(cors({origin: 'http://localhost:5173',
+//   credentials: true,
+//   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], 
+//   allowedHeaders: ["Content-Type", "Authorization"],}));
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://beingsmile.org'
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // allow requests with no origin (like mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      return callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], 
-  allowedHeaders: ["Content-Type", "Authorization"],}));
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 app.use(express.json());  // For parsing application/json
 app.use(morgan('dev'));  // Logging middleware for development
 app.use(cookieParser());  // For parsing cookies
