@@ -31,6 +31,12 @@ export const initiatePayment = async (req, res) => {
             return res.status(400).json({ error: "Campaign is not accepting donations" });
         }
 
+        // Check if campaign hasn't ended
+        const now = new Date();
+        if (campaign.endDate < now) {
+            return res.status(400).json({ error: "Campaign deadline has passed" });
+        }
+
         // Generate unique transaction ID
         const tran_id = `TRAN_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
