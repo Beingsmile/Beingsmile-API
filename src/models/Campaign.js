@@ -79,7 +79,7 @@ const campaignSchema = new mongoose.Schema(
         donor: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "User",
-          required: true,
+          required: false,
         },
         amount: {
           type: Number,
@@ -91,6 +91,10 @@ const campaignSchema = new mongoose.Schema(
           default: false,
         },
         message: String,
+        paymentIntentId: {
+          type: String,
+          required: false,
+        },
         donatedAt: {
           type: Date,
           default: Date.now,

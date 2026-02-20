@@ -4,9 +4,9 @@ import morgan from "morgan";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import campaignRoutes from "./routes/campaignRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
-import Stripe from "stripe";
 
 const app = express();
 
@@ -18,6 +18,7 @@ app.use(helmet());        // Security middleware
 //   allowedHeaders: ["Content-Type", "Authorization"],}));
 const allowedOrigins = [
   'http://localhost:5173',
+  'http://localhost:5174',
   'https://beingsmile.org'
 ];
 
@@ -47,39 +48,7 @@ app.use(cookieParser());  // For parsing cookies
 // Import routes
 app.use('/api/auth', authRoutes);
 app.use('/api/campaigns', campaignRoutes);
-// app.use('/api/payment')
-const stripe = new Stripe(process.env.STRIPE_SK);
-app.post("/create-payment-intent", async (req, res) => {
-      const { amount, id } = req.body;
-
-      try {
-        const paymentIntent = await stripe.paymentIntents.create({
-          amount: amount,
-          currency: "usd",
-          payment_method_types: ["card"],
-        });
-
-        res.send({
-          clientSecret: paymentIntent.client_secret,
-        });
-      } catch (error) {
-        console.error("Error creating payment intent:", error);
-        res.status(500).send({ error: "Failed to create payment intent" });
-      }
-    });
-
-app.get("/api/transactions", async (req, res) => {
-  try {
-    const paymentIntents = await stripe.paymentIntents.list({
-      limit: 10, // Adjust limit if needed
-    });
-
-    res.json(paymentIntents.data);
-  } catch (error) {
-    console.error("Error fetching transactions:", error);
-    res.status(500).json({ error: "Failed to fetch transactions" });
-  }
-});
+app.use('/api/payment', paymentRoutes);
 
 
 // Basic route
