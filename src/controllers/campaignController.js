@@ -149,10 +149,10 @@ export const deleteCampaign = async (req, res) => {
   const { id: campaignId } = req.params;
 
   if (!mongoose.Types.ObjectId.isValid(campaignId)) {
-      return res.status(400).json({ message: "Invalid campaign ID" });
-    }
+    return res.status(400).json({ message: "Invalid campaign ID" });
+  }
 
-  
+
   try {
     // Find the campaign
     const campaign = await Campaign.findById(campaignId);
@@ -434,5 +434,48 @@ export const getComments = async (req, res) => {
     res.status(200).json(sortedComments);
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+// Update campaign (creator only)
+export const updateCampaign = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      title,
+      description,
+      category,
+      goalAmount,
+      endDate,
+    } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid campaign ID" });
+    }
+
+    const campaign = await Campaign.findById(id);
+
+    if (!campaign) {
+      return res.status(404).json({ message: "Campaign not found" });
+    }
+
+    // Only creator can update
+    if (campaign.creator.toString() !== req.uid) {
+      return res.status(403).json({ message: "Forbidden: Not the campaign creator" });
+    }
+
+    // Update fields
+    if (title) campaign.title = title;
+    if (description) campaign.description = description;
+    if (category) campaign.category = category;
+    if (goalAmount) campaign.goalAmount = goalAmount;
+    if (endDate) campaign.endDate = endDate;
+
+    const updatedCampaign = await campaign.save();
+
+    res.status(200).json({ success: true, campaign: updatedCampaign });
+  } catch (err) {
+    console.error("Error updating campaign:", err);
+    res.status(500).json({ success: false, message: err.message });
   }
 };

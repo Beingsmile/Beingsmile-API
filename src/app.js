@@ -6,6 +6,7 @@ import authRoutes from "./routes/authRoutes.js";
 import campaignRoutes from "./routes/campaignRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+import verificationRoutes from "./routes/verificationRoutes.js";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 
@@ -55,7 +56,8 @@ app.use(cookieParser());  // For parsing cookies
 app.use('/api/auth', authRoutes);
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/payment', paymentRoutes);
-app.use('/api/users', userRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/verification", verificationRoutes);
 
 
 // Basic route
