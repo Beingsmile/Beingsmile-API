@@ -37,6 +37,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: '', // Placeholder bio
     },
+    phoneNumber: {
+      type: String,
+      default: '',
+    },
     donatedCampaigns: [
       {
         campaign: { type: mongoose.Schema.Types.ObjectId, ref: 'Campaign' },

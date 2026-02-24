@@ -5,6 +5,7 @@ import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import campaignRoutes from "./routes/campaignRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 
@@ -54,6 +55,7 @@ app.use(cookieParser());  // For parsing cookies
 app.use('/api/auth', authRoutes);
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/users', userRoutes);
 
 
 // Basic route
