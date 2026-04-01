@@ -10,24 +10,39 @@ export const createCampaign = async (req, res) => {
       description,
       category,
       goalAmount,
-      coverImage, // Can be a URL or base64 string
-      images,     // Array of more image URLs
+      coverImage,
+      images,
       endDate,
+      verificationDocuments, // Array of document URLs or base64
     } = req.body;
 
-    // Get user details from DB using uid
-    const user = await User.findById(req.uid).select('name');
+    // Get user details from DB
+    const user = await User.findById(req.uid).select('name identity');
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    // Check if user is verified
+    if (!user.identity || !user.identity.isVerified) {
+      return res.status(403).json({ success: false, message: 'Only verified fundraisers can launch missions. Please complete your identity verification first.' });
+    }
 
     // Upload coverImage to Cloudinary
     const uploadedCover = await uploadImage(coverImage, `campaign_covers/${Date.now()}`);
 
-    // Upload each image in 'images' array
+    // Upload campaign images
     const uploadedImages = [];
     if (images && Array.isArray(images)) {
       for (const img of images) {
         const result = await uploadImage(img, `campaign_images/${Date.now()}_${Math.random()}`);
         uploadedImages.push(result.secure_url);
+      }
+    }
+
+    // Upload verification documents
+    const uploadedDocs = [];
+    if (verificationDocuments && Array.isArray(verificationDocuments)) {
+      for (const doc of verificationDocuments) {
+        const result = await uploadImage(doc, `campaign_docs/${Date.now()}_${Math.random()}`);
+        uploadedDocs.push(result.secure_url);
       }
     }
 
@@ -37,11 +52,16 @@ export const createCampaign = async (req, res) => {
       description,
       category,
       goalAmount,
-      coverImage: uploadedCover.secure_url, // Cloudinary image
+      coverImage: uploadedCover.secure_url,
       images: uploadedImages,
       creatorUsername: user.name,
       endDate,
-      creator: req.uid, // From JWT middleware
+      creator: req.uid,
+      status: 'pending', // Explicitly set to pending
+      verificationDetails: {
+        documents: uploadedDocs,
+      },
+      isFeatured: false,
     });
 
     res.status(201).json({ success: true, campaign: newCampaign });
@@ -60,13 +80,22 @@ export const getCampaignById = async (req, res) => {
       return res.status(400).json({ message: "Invalid campaign ID" });
     }
 
-    const campaign = await Campaign.findById(id).populate(
-      "creator",
-      "avatar name email"
-    ); // Optional: include creator's info
+    const campaign = await Campaign.findById(id)
+      .populate("creator", "avatar name email")
+      .populate("donations.donor", "name avatar");
 
     if (!campaign) {
       return res.status(404).json({ message: "Campaign not found" });
+    }
+
+    // Redact verification documents for non-admins and non-creators
+    const isAdmin = req.role === 'admin' || req.role === 'moderator';
+    const isCreator = req.uid && campaign.creator && campaign.creator._id.toString() === req.uid;
+
+    if (!isAdmin && !isCreator) {
+      if (campaign.verificationDetails) {
+        campaign.verificationDetails.documents = [];
+      }
     }
 
     res.status(200).json({ campaign });
@@ -101,6 +130,7 @@ export const getUserCampaigns = async (req, res) => {
 
     // Fetch paginated campaigns
     const campaigns = await Campaign.find({ creator: req.uid })
+      .select("title coverImage goalAmount currentAmount withdrawnAmount endDate creatorUsername category status")
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 }); // latest first
@@ -124,9 +154,10 @@ export const getAllCampaigns = async (req, res) => {
     const limit = 10;
     const skip = (page - 1) * limit;
 
-    const total = await Campaign.countDocuments();
+    const total = await Campaign.countDocuments({ status: "active" });
 
-    const campaigns = await Campaign.find()
+    const campaigns = await Campaign.find({ status: "active" })
+      .select("title coverImage goalAmount currentAmount endDate creatorUsername category status")
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 }) // newest first
@@ -203,7 +234,11 @@ export const getFilteredCampaigns = async (req, res) => {
     const query = {};
 
     if (category) query.category = category;
-    if (status) query.status = status;
+    if (status) {
+      query.status = status;
+    } else {
+      query.status = "active"; // Default to active for public search
+    }
 
     if (search) {
       query.$or = [
@@ -235,6 +270,19 @@ export const getFilteredCampaigns = async (req, res) => {
     // Sort by status priority and createdAt
     const campaigns = await Campaign.aggregate([
       { $match: query },
+      {
+        $project: {
+          title: 1,
+          coverImage: 1,
+          goalAmount: 1,
+          currentAmount: 1,
+          endDate: 1,
+          creatorUsername: 1,
+          category: 1,
+          status: 1,
+          createdAt: 1,
+        }
+      },
       {
         $addFields: {
           statusPriority: {
@@ -470,12 +518,28 @@ export const updateCampaign = async (req, res) => {
     if (category) campaign.category = category;
     if (goalAmount) campaign.goalAmount = goalAmount;
     if (endDate) campaign.endDate = endDate;
+    if (req.body.isFeatured !== undefined) campaign.isFeatured = req.body.isFeatured;
 
     const updatedCampaign = await campaign.save();
 
     res.status(200).json({ success: true, campaign: updatedCampaign });
   } catch (err) {
     console.error("Error updating campaign:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Get featured campaigns
+export const getFeaturedCampaigns = async (req, res) => {
+  try {
+    const campaigns = await Campaign.find({ isFeatured: true, status: "active" })
+      .select("title coverImage goalAmount currentAmount endDate creatorUsername category status")
+      .limit(6)
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({ success: true, campaigns });
+  } catch (err) {
+    console.error("Error fetching featured campaigns:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 };

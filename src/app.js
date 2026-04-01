@@ -7,6 +7,9 @@ import campaignRoutes from "./routes/campaignRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import verificationRoutes from "./routes/verificationRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
+import payoutRoutes from "./routes/payoutRoutes.js";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 
@@ -27,23 +30,22 @@ const allowedOrigins = [
   'https://beingsmile.org',
   'https://sandbox.aamarpay.com',
   'https://secure.aamarpay.com',
-  '*' // Allow any origin for server-to-server callbacks
 ];
 
-// CORS middleware with permissive origin for Aamarpay callbacks
+// CORS middleware
 const corsOptions = {
   origin: function (origin, callback) {
-    // allow requests with no origin (like server-to-server requests from Aamarpay)
+    // allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    // allow Aamarpay and frontend origins
-    if (allowedOrigins.includes(origin) || origin.includes('aamarpay.com')) {
-      return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.includes('aamarpay.com')) {
+      callback(null, true);
+    } else {
+      callback(null, false);
     }
-    // Reject other origins
-    return callback(null, true); // Allow all for now during testing
   },
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 };
 
@@ -58,6 +60,9 @@ app.use('/api/campaigns', campaignRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/verification", verificationRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/payouts", payoutRoutes);
 
 
 // Basic route

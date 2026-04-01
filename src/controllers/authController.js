@@ -1,11 +1,15 @@
 import mongoose from "mongoose";
 import User from "../models/User.js";
+import OTP from "../models/OTP.js";
 import generateToken, { COOKIE_OPTIONS } from "../utils/jwt.js";
+import { generateUniqueSlug } from "../utils/userUtils.js";
+import { sendOTPEmail } from "../utils/emailUtils.js";
+import Notification from "../models/Notification.js";
 
 // Register
 export const register = async (req, res) => {
   try {
-    const { uid, name, email } = req.body;
+    const { uid, name, email, userType } = req.body;
 
     // Check if user exists
     const existingUser = await User.findOne({ email });
@@ -13,11 +17,22 @@ export const register = async (req, res) => {
       return res.status(400).json({ message: "Email already exists" });
     }
 
+    // Generate unique slug
+    const slug = await generateUniqueSlug(name);
+
     // Create user
     const user = await User.create({
       firebaseUid: uid, // Firebase UID
       name,
       email,
+      slug,
+      userType: userType || 'donor',
+      isEmailVerified: req.body.isEmailVerified || false,
+      metrics: {
+        totalDonated: 0,
+        totalRaised: 0,
+        campaignCount: 0,
+      },
     });
 
     const token = generateToken(user._id, 'user'); // Generate JWT token
@@ -41,10 +56,81 @@ export const login = async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
+    // Check email verification
+    if (!user.isEmailVerified) {
+      return res.status(403).json({ 
+        message: "PLEASE_VERIFY_EMAIL", 
+        reason: "Your email address is not verified yet. Please complete verification to access your account." 
+      });
+    }
+
+    // Check account status
+    if (user.status === 'suspended') {
+      return res.status(403).json({ 
+        message: "ACCOUNT_SUSPENDED", 
+        reason: user.statusMessage || "Your account has been suspended for violating platform policies." 
+      });
+    }
+
     const token = generateToken(user._id, 'user'); // Generate JWT token
 
     res.cookie("jwttoken", token, COOKIE_OPTIONS);
     res.status(200).json({ user });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Send OTP
+export const sendOTP = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: "Email is required" });
+
+    // Generate 6 digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Save to DB (upsert)
+    await OTP.findOneAndUpdate(
+      { email },
+      { otp, createdAt: Date.now() },
+      { upsert: true, new: true }
+    );
+
+    // Send Email
+    const emailSent = await sendOTPEmail(email, otp);
+    if (!emailSent) {
+      return res.status(500).json({ message: "Failed to send verification email" });
+    }
+
+    res.status(200).json({ message: "Verification code sent to your email" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Verify OTP
+export const verifyOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) return res.status(400).json({ message: "Email and OTP are required" });
+
+    const otpData = await OTP.findOne({ email, otp });
+    if (!otpData) {
+      return res.status(400).json({ message: "Invalid or expired verification code" });
+    }
+
+    // Success - delete OTP
+    await OTP.deleteOne({ _id: otpData._id });
+
+    // Check if user already exists (for logging in after verification or re-verifying)
+    const user = await User.findOne({ email });
+    if (user) {
+      user.isEmailVerified = true;
+      await user.save();
+    }
+
+    res.status(200).json({ success: true, message: "Email verified successfully" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -77,6 +163,24 @@ export const getUserByFirebaseUid = async (req, res) => {
     res.status(200).json({ user });
   } catch (error) {
     console.error("Error fetching user by Firebase UID:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Get public profile by slug
+export const getPublicProfileBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const user = await User.findOne({ slug, status: 'active' })
+      .select('name avatar bio metrics userType identity.isVerified publicProfile createdAt');
+
+    if (!user) {
+      return res.status(404).json({ message: "Profile not found" });
+    }
+
+    res.status(200).json({ user });
+  } catch (error) {
+    console.error("Error fetching public profile:", error);
     res.status(500).json({ message: "Server error" });
   }
 };

@@ -1,6 +1,31 @@
 import axios from 'axios';
 import crypto from 'crypto';
 import Campaign from "../models/Campaign.js";
+import User from "../models/User.js";
+import Transaction from "../models/Transaction.js";
+import { notifyDonation } from "../utils/notificationUtils.js";
+
+const VERIFY_URL = process.env.AAMARPAY_MODE === 'sandbox' 
+    ? "https://sandbox.aamarpay.com/api/v1/trxcheck/request.php"
+    : "https://secure.aamarpay.com/api/v1/trxcheck/request.php";
+
+// Helper to verify payment with Aamarpay API
+const verifyPaymentAPI = async (mer_txnid) => {
+    try {
+        const response = await axios.get(VERIFY_URL, {
+            params: {
+                request_id: mer_txnid,
+                store_id: process.env.AAMARPAY_STORE_ID,
+                signature_key: process.env.AAMARPAY_SIGNATURE_KEY,
+                type: "json"
+            }
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Aamarpay verification API error:", error);
+        return null;
+    }
+};
 
 // Initialize payment with Aamarpay
 export const initiatePayment = async (req, res) => {
@@ -75,6 +100,20 @@ export const initiatePayment = async (req, res) => {
         );
 
         if (response.data && response.data.result === "true" && response.data.payment_url) {
+            // Log initiation in Transaction model
+            await Transaction.create({
+                transactionId: tran_id,
+                campaign: campaignId,
+                user: req.userId === 'anonymous' ? null : req.userId,
+                amount: amount,
+                status: "initiated",
+                customerDetails: {
+                    name: customerName,
+                    email: customerEmail,
+                    phone: customerPhone,
+                }
+            });
+
             console.log(`✅ Payment initiated: ${tran_id} for campaign ${campaignId}`);
             res.json({
                 success: true,
@@ -102,29 +141,47 @@ export const initiatePayment = async (req, res) => {
 
 // Handle payment success callback
 export const handlePaymentSuccess = async (req, res) => {
+    const session = await Campaign.startSession();
+    session.startTransaction();
     try {
-        const paymentData = req.body;
-        const { status_code, amount, mer_txnid, cus_email, cus_name, opt_a, opt_b } = paymentData;
+        // 1. Server-to-Server Verification (CRITICAL for Security)
+        const verification = await verifyPaymentAPI(mer_txnid);
+        
+        if (!verification || verification.pay_status !== "Successful") {
+            console.error(`[PAYMENT_CRITICAL] Server-side verification failed for TXN: ${mer_txnid}`, verification);
+            
+            // Log the suspected fraud attempt or failed verification
+            await Transaction.findOneAndUpdate(
+                { transactionId: mer_txnid },
+                { 
+                    status: "failed", 
+                    errorMessage: "Server-side verification failed. Suspected spoofing or bank-level failure.",
+                    gatewayResponse: paymentData 
+                }
+            );
+            
+            return res.redirect(`${process.env.FRONTEND_URL}/payment-failure?error=verification_failed`);
+        }
 
-        console.log("✅ Payment Success Callback Received:", paymentData);
-
-        // Verify payment (status_code 2 = successful)
-        if (status_code !== "2") {
-            console.error("Invalid status code:", status_code);
-            return res.redirect(`${process.env.FRONTEND_URL}/payment-failure`);
+        // Verify that the amount and currency match
+        if (parseFloat(verification.amount) !== parseFloat(amount)) {
+             console.error(`[PAYMENT_CRITICAL] Amount mismatch! Reported: ${amount}, Verified: ${verification.amount}`);
+             return res.redirect(`${process.env.FRONTEND_URL}/payment-failure?error=amount_mismatch`);
         }
 
         const campaignId = opt_a;
         const userId = opt_b === "anonymous" ? null : opt_b;
 
-        // Find and update campaign
-        const campaign = await Campaign.findById(campaignId);
-        if (!campaign) {
-            console.error(`Campaign not found: ${campaignId}`);
-            return res.redirect(`${process.env.FRONTEND_URL}/payment-failure`);
+        // 2. Idempotency Check: Verify if this transaction has already been processed
+        const existingCampaign = await Campaign.findOne({ "donations.transactionId": mer_txnid }).session(session);
+        if (existingCampaign) {
+            console.warn(`[PAYMENT_WARN] Duplicate callback detected for TXN: ${mer_txnid}. Skipping processing.`);
+            await session.commitTransaction();
+            session.endSession();
+            return res.redirect(`${process.env.FRONTEND_URL}/payment-success?tid=${mer_txnid}&amount=${amount}&duplicate=true`);
         }
 
-        // Add donation record
+        // 3. Atomic Update: Find and update campaign in one go
         const donation = {
             donor: userId,
             amount: parseFloat(amount),
@@ -135,18 +192,65 @@ export const handlePaymentSuccess = async (req, res) => {
             paymentGateway: "aamarpay",
         };
 
-        campaign.donations.push(donation);
-        campaign.currentAmount += parseFloat(amount);
-        await campaign.save();
+        const updatedCampaign = await Campaign.findOneAndUpdate(
+            { _id: campaignId },
+            { 
+                $push: { donations: donation },
+                $inc: { currentAmount: parseFloat(amount) }
+            },
+            { session, new: true }
+        );
 
-        console.log(`✅ Donation recorded: ${amount} BDT to campaign ${campaignId}`);
+        if (!updatedCampaign) {
+            throw new Error(`Campaign ${campaignId} not found during success callback`);
+        }
+
+        // 3. Update User's donation history if logged in
+        if (userId) {
+            await User.findByIdAndUpdate(
+                userId,
+                { 
+                    $push: { 
+                        donatedCampaigns: { 
+                            campaign: campaignId, 
+                            amount: parseFloat(amount), 
+                            donatedAt: new Date() 
+                        } 
+                    } 
+                },
+                { session }
+            );
+        }
+
+        // 4. Trigger Notification
+        await notifyDonation(updatedCampaign, donation);
+
+        // 5. Update Transaction record
+        await Transaction.findOneAndUpdate(
+            { transactionId: mer_txnid },
+            { 
+                status: "success", 
+                gatewayResponse: paymentData,
+                netAmount: parseFloat(amount),
+                platformFee: 0, // 100% goes to mission as per trust claim
+                verificationLevel: "server_confirmed"
+            },
+            { session }
+        );
+
+        await session.commitTransaction();
+        session.endSession();
+
+        console.log(`[PAYMENT_SUCCESS] Successfully processed TXN: ${mer_txnid}. Campaign: ${campaignId}, Amount: ${amount}`);
 
         // Redirect to frontend success page
         res.redirect(`${process.env.FRONTEND_URL}/payment-success?tid=${mer_txnid}&amount=${amount}`);
 
     } catch (error) {
-        console.error("Error processing payment success:", error);
-        res.redirect(`${process.env.FRONTEND_URL}/payment-failure`);
+        await session.abortTransaction();
+        session.endSession();
+        console.error(`[PAYMENT_CRITICAL] Error processing payment success for TXN: ${req.body.mer_txnid}:`, error);
+        res.redirect(`${process.env.FRONTEND_URL}/payment-failure?error=processing_error`);
     }
 };
 
@@ -160,6 +264,16 @@ export const handlePaymentFail = async (req, res) => {
 
         // Log failure for debugging
         console.log(`Payment failed for transaction ${mer_txnid}: ${pay_status} - ${reason}`);
+
+        // Log failure in Transaction model
+        await Transaction.findOneAndUpdate(
+            { transactionId: mer_txnid },
+            { 
+                status: "failed", 
+                gatewayResponse: paymentData,
+                errorMessage: reason || pay_status 
+            }
+        );
 
         // Redirect to frontend failure page
         res.redirect(`${process.env.FRONTEND_URL}/payment-failure?tid=${mer_txnid}&reason=${encodeURIComponent(reason || pay_status)}`);

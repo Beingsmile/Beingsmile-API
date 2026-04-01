@@ -49,6 +49,11 @@ const campaignSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    withdrawnAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
 
     // Media
     coverImage: {
@@ -116,8 +121,18 @@ const campaignSchema = new mongoose.Schema(
     // Status
     status: {
       type: String,
-      enum: ["active", "completed", "suspended"],
-      default: "active",
+      enum: ["pending", "active", "completed", "suspended", "needs_info"],
+      default: "pending",
+    },
+    verificationDetails: {
+      documents: [String], // Verification documents specifically for this campaign
+      adminNotes: String,
+      verifiedAt: Date,
+      verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    },
+    isFeatured: {
+      type: Boolean,
+      default: false,
     },
 
     comments: [
@@ -172,5 +187,7 @@ const campaignSchema = new mongoose.Schema(
 campaignSchema.index({ title: "text", description: "text" }); // Full-text search
 campaignSchema.index({ creator: 1 }); // Faster creator lookups
 campaignSchema.index({ category: 1, status: 1 }); // Filter by category/status
+campaignSchema.index({ isFeatured: 1 }); // Faster featured queries
+campaignSchema.index({ "donations.transactionId": 1 }); // For idempotency lookups
 
 export default mongoose.model("Campaign", campaignSchema);

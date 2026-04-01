@@ -1,0 +1,276 @@
+import mongoose from "mongoose";
+import dotenv from "dotenv";
+import Campaign from "../models/Campaign.js";
+import User from "../models/User.js";
+
+dotenv.config();
+
+const creatorId = "687113dcb44754aae41d980a"; // Existing user ID
+const creatorUsername = "ATIKUR RAHMAN";
+
+const campaigns = [
+  {
+    title: "Solar for Schools",
+    description: "Rural schools in Bangladesh often suffer from unreliable electricity. This campaign aims to equip 10 schools with solar panels, ensuring uninterrupted learning and reducing their carbon footprint. The funds will cover panels, batteries, and installation costs, along with training for local technicians.",
+    creator: creatorId,
+    creatorUsername,
+    category: "education",
+    goalAmount: 1500,
+    currentAmount: 500,
+    coverImage: "https://res.cloudinary.com/dsah8exzi/image/upload/v1754227382/campaign_covers/1754227376406.png",
+    endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 days from now
+    status: "active",
+    isFeatured: true,
+  },
+  {
+    title: "Coding for Kids",
+    description: "Many children in low-income areas have no access to computer education. This campaign will organize coding bootcamps in slum areas of Dhaka, providing Raspberry Pi kits, trained volunteers, and online learning tools to teach HTML, CSS, and basic programming.",
+    creator: creatorId,
+    creatorUsername,
+    category: "education",
+    goalAmount: 1000,
+    currentAmount: 200,
+    coverImage: "https://res.cloudinary.com/dsah8exzi/image/upload/v1754235783/campaign_covers/1754235783007.jpg",
+    endDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000),
+    status: "active",
+    isFeatured: true,
+  },
+  {
+    title: "Clean Water for Char Areas",
+    description: "The river islands (chars) in northern Bangladesh lack access to clean water. Your support will fund the construction of solar-powered water purification units that provide clean, safe drinking water to over 500 families in Kurigram and Gaibandha.",
+    creator: creatorId,
+    creatorUsername,
+    category: "health",
+    goalAmount: 5000,
+    currentAmount: 1200,
+    coverImage: "https://res.cloudinary.com/dsah8exzi/image/upload/v1754235844/campaign_covers/1754235843690.jpg",
+    endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    status: "active",
+    isFeatured: true,
+  },
+  {
+    title: "Medical Aid for Rohingya Refugees",
+    description: "Cox’s Bazar is home to one of the world's largest refugee camps. This campaign supports emergency healthcare by funding mobile clinics, basic medicines, and maternal health services in the camps.",
+    creator: creatorId,
+    creatorUsername,
+    category: "health",
+    goalAmount: 3000,
+    currentAmount: 120,
+    coverImage: "https://res.cloudinary.com/dsah8exzi/image/upload/v1754235914/campaign_covers/1754235914240.jpg",
+    endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+    status: "active",
+  },
+  {
+    title: "Rebuild After Cyclone Remal",
+    description: "Cyclone Remal has devastated coastal communities in Patuakhali. This campaign will provide 500+ families with emergency shelters, dry food packages, and hygiene kits to survive and rebuild their lives post-disaster.",
+    creator: creatorId,
+    creatorUsername,
+    category: "community",
+    goalAmount: 3000,
+    currentAmount: 230,
+    coverImage: "https://res.cloudinary.com/dsah8exzi/image/upload/v1754236634/campaign_covers/1754236633925.jpg",
+    endDate: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
+    status: "active",
+  },
+  {
+    title: "Laptop for Every Learner",
+    description: "Many university students in Bangladesh attend online classes via borrowed phones or internet cafes. Help us provide refurbished laptops to students in need at public universities so they can access education equally.",
+    creator: creatorId,
+    creatorUsername,
+    category: "technology",
+    goalAmount: 200000,
+    currentAmount: 0,
+    coverImage: "https://res.cloudinary.com/dsah8exzi/image/upload/v1754236704/campaign_covers/1754236703563.jpg",
+    endDate: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000),
+    status: "active",
+  },
+  {
+    title: "Plant 10,000 Trees",
+    description: "Urban Dhaka and surrounding districts suffer from air pollution and deforestation. With your help, we aim to plant 10,000 native trees in schools, streets, and open lands while involving local students in the process.",
+    creator: creatorId,
+    creatorUsername,
+    category: "environment",
+    goalAmount: 10000,
+    currentAmount: 0,
+    coverImage: "https://res.cloudinary.com/dsah8exzi/image/upload/v1754236796/campaign_covers/1754236795622.jpg",
+    endDate: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
+    status: "active",
+  },
+  {
+    title: "Mental Health Hotline",
+    description: "Mental health is still stigmatized in many communities. This campaign will help launch a toll-free, 24/7 mental health hotline run by certified psychologists, especially for students and young professionals struggling with anxiety and depression.",
+    creator: creatorId,
+    creatorUsername,
+    category: "health",
+    goalAmount: 5000,
+    currentAmount: 0,
+    coverImage: "https://res.cloudinary.com/dsah8exzi/image/upload/v1754236873/campaign_covers/1754236872837.jpg",
+    endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+    status: "active",
+  },
+  {
+    title: "Village Tech Hub",
+    description: "Rural students lack access to digital resources. This project will set up a solar-powered community tech hub with 10 computers, internet access, and basic training modules in computer literacy, email usage, and online safety.",
+    creator: creatorId,
+    creatorUsername,
+    category: "technology",
+    goalAmount: 5000,
+    currentAmount: 0,
+    coverImage: "https://res.cloudinary.com/dsah8exzi/image/upload/v1754236921/campaign_covers/1754236920953.webp",
+    endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+    status: "active",
+  },
+  {
+    title: "Sponsor a Science Fair",
+    description: "Young minds need space to explore. This campaign will sponsor science fairs at 10 schools across Bangladesh, offering funding for science kits, prizes, judges, and logistics to promote STEM education and innovation.",
+    creator: creatorId,
+    creatorUsername,
+    category: "community",
+    goalAmount: 1200,
+    currentAmount: 0,
+    coverImage: "https://res.cloudinary.com/dsah8exzi/image/upload/v1754236966/campaign_covers/1754236966203.jpg",
+    endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    status: "active",
+  },
+  {
+    title: "Blood Donation App Upgrade",
+    description: "Our voluntary blood donation app connects donors with patients. With your support, we can improve search, add multilingual support, and introduce real-time availability tracking to save more lives during emergencies.",
+    creator: creatorId,
+    creatorUsername,
+    category: "community",
+    goalAmount: 800,
+    currentAmount: 0,
+    coverImage: "https://res.cloudinary.com/dsah8exzi/image/upload/v1754237014/campaign_covers/1754237014066.png",
+    endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+    status: "active",
+  },
+  {
+    title: "Safe Sanitation for Girls",
+    description: "Poor sanitation forces many rural girls to drop out after puberty. This campaign will fund construction of clean, secure toilets in 20 government schools and provide menstrual hygiene workshops to promote dignity and health.",
+    creator: creatorId,
+    creatorUsername,
+    category: "health",
+    goalAmount: 1200,
+    currentAmount: 0,
+    coverImage: "https://res.cloudinary.com/dsah8exzi/image/upload/v1754237052/campaign_covers/1754237052016.jpg",
+    endDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000),
+    status: "active",
+  },
+  {
+    title: "Support a Street Artist",
+    description: "A talented street artist from Rajshahi dreams of owning a small studio and teaching art to kids in his community. Help him set up a creative space, buy painting supplies, and host weekly art sessions for local children.",
+    creator: creatorId,
+    creatorUsername,
+    category: "art",
+    goalAmount: 900,
+    currentAmount: 0,
+    coverImage: "https://res.cloudinary.com/dsah8exzi/image/upload/v1754237101/campaign_covers/1754237100969.jpg",
+    endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    status: "active",
+  },
+  {
+    title: "Build a Mobile Library",
+    description: "Many rural areas don’t have libraries. This campaign will fund a mobile van with 1,000 books, tablets with audiobooks, and a weekly schedule to visit underserved schools and community centers across Barisal.",
+    creator: creatorId,
+    creatorUsername,
+    category: "education",
+    goalAmount: 800,
+    currentAmount: 600,
+    coverImage: "https://res.cloudinary.com/dsah8exzi/image/upload/v1754237146/campaign_covers/1754237145941.webp",
+    endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+    status: "active",
+  },
+  {
+    title: "Digitize Heritage Sites",
+    description: "Bangladesh's historic sites are at risk of decay. This project aims to digitally preserve Panam City, Mahasthangarh, and Lalbagh Fort by creating interactive 3D scans, educational VR tours, and online archives.",
+    creator: creatorId,
+    creatorUsername,
+    category: "other",
+    goalAmount: 1500,
+    currentAmount: 760,
+    coverImage: "https://res.cloudinary.com/dsah8exzi/image/upload/v1754237181/campaign_covers/1754237181247.png",
+    endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+    status: "active",
+  },
+  {
+    title: "Emergency Medical Fund",
+    description: "John Doe, a 3rd-year student at AIUB, has been diagnosed with leukemia. The campaign supports his chemotherapy, travel, hospital stays, and medications. Every contribution helps his fight for life.",
+    creator: creatorId,
+    creatorUsername,
+    category: "health",
+    goalAmount: 1500,
+    currentAmount: 0,
+    coverImage: "https://res.cloudinary.com/dsah8exzi/image/upload/v1754237221/campaign_covers/1754237220940.jpg",
+    endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    status: "active",
+  },
+  {
+    title: "AI for Agriculture",
+    description: "Rural farmers often suffer from unpredictable crop diseases. This campaign trains 100 farmers to use a mobile app powered by AI that detects crop diseases from leaf images, boosting yield and minimizing pesticide misuse.",
+    creator: creatorId,
+    creatorUsername,
+    category: "community",
+    goalAmount: 2500,
+    currentAmount: 1230,
+    coverImage: "https://res.cloudinary.com/dsah8exzi/image/upload/v1754237278/campaign_covers/1754237278254.jpg",
+    endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+    status: "active",
+  },
+  {
+    title: "Women in Tech Scholarships",
+    description: "Women are underrepresented in tech. This campaign offers scholarships, laptops, and mentorship for 20 female students entering Computer Science programs across top Bangladeshi universities.",
+    creator: creatorId,
+    creatorUsername,
+    category: "community",
+    goalAmount: 2000,
+    currentAmount: 1800,
+    coverImage: "https://res.cloudinary.com/dsah8exzi/image/upload/v1754237320/campaign_covers/1754237320427.jpg",
+    endDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000),
+    status: "active",
+  },
+  {
+    title: "Build a Bamboo Bridge",
+    description: "A community in Sunamganj is cut off during monsoon due to lack of bridges. Help us build a durable bamboo bridge so children can attend school, farmers can transport crops, and families can access healthcare year-round.",
+    creator: creatorId,
+    creatorUsername,
+    category: "community",
+    goalAmount: 2500,
+    currentAmount: 1240,
+    coverImage: "https://res.cloudinary.com/dsah8exzi/image/upload/v1754237380/campaign_covers/1754237380506.jpg",
+    endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    status: "active",
+  },
+  {
+    title: "Startup Seed for Youth",
+    description: "Young entrepreneurs often lack funding. This campaign supports 10 youth-led startups in Khulna through microgrants (10,000–50,000 BDT), mentorship, and networking support to turn their ideas into reality.",
+    creator: creatorId,
+    creatorUsername,
+    category: "community",
+    goalAmount: 3000,
+    currentAmount: 350,
+    coverImage: "https://res.cloudinary.com/dsah8exzi/image/upload/v1754237418/campaign_covers/1754237418225.jpg",
+    endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+    status: "active",
+  },
+];
+
+const seedDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGODB_URI);
+    console.log("Connected to MongoDB for seeding...");
+
+    // Optional: Clear existing campaigns
+    await Campaign.deleteMany({});
+    console.log("Cleared existing campaigns.");
+
+    await Campaign.insertMany(campaigns);
+    console.log("Seeded real campaign data successfully.");
+
+    process.exit();
+  } catch (err) {
+    console.error("Error seeding database:", err);
+    process.exit(1);
+  }
+};
+
+seedDB();

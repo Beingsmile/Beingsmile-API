@@ -4,6 +4,7 @@ export async function uploadImage(imagePath, publicId = null) {
   try {
     const result = await cloudinary.uploader.upload(imagePath, {
       public_id: publicId,
+      resource_type: "auto",
     });
     return result;
   } catch (error) {
