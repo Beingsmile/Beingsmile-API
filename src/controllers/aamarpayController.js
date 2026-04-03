@@ -30,7 +30,7 @@ const verifyPaymentAPI = async (mer_txnid) => {
 // Initialize payment with Aamarpay
 export const initiatePayment = async (req, res) => {
     try {
-        const { amount, campaignId, customerName, customerEmail, customerPhone } = req.body;
+        const { amount, campaignId, customerName, customerEmail, customerPhone, isAnonymous, isAnonymousFromAll, donorMessage, platformFee } = req.body;
 
         // Validate input
         if (!amount || amount < 1) {
@@ -111,7 +111,11 @@ export const initiatePayment = async (req, res) => {
                     name: customerName,
                     email: customerEmail,
                     phone: customerPhone,
-                }
+                },
+                isAnonymous: isAnonymous || false,
+                isAnonymousFromAll: isAnonymousFromAll || false,
+                donorMessage: donorMessage || "",
+                platformFee: platformFee || 0,
             });
 
             console.log(`✅ Payment initiated: ${tran_id} for campaign ${campaignId}`);
@@ -144,6 +148,16 @@ export const handlePaymentSuccess = async (req, res) => {
     const session = await Campaign.startSession();
     session.startTransaction();
     try {
+        const paymentData = req.body;
+        const { mer_txnid, amount, opt_a, opt_b } = paymentData;
+
+        // Fetch transaction details from our DB for additional fields
+        const localTrx = await Transaction.findOne({ transactionId: mer_txnid }).session(session);
+        if (!localTrx) {
+            console.error(`[PAYMENT_CRITICAL] Local transaction not found for TXN: ${mer_txnid}`);
+            return res.redirect(`${process.env.FRONTEND_URL}/payment-failure?error=transaction_not_found`);
+        }
+
         // 1. Server-to-Server Verification (CRITICAL for Security)
         const verification = await verifyPaymentAPI(mer_txnid);
         
@@ -184,12 +198,16 @@ export const handlePaymentSuccess = async (req, res) => {
         // 3. Atomic Update: Find and update campaign in one go
         const donation = {
             donor: userId,
+            donorName: localTrx.customerDetails?.name || "Anonymous",
+            donorEmail: localTrx.customerDetails?.email,
             amount: parseFloat(amount),
-            isAnonymous: !userId || userId === "anonymous",
-            message: "",
+            platformFee: localTrx.platformFee || 0,
+            isAnonymous: localTrx.isAnonymous || false,
+            isAnonymousFromAll: localTrx.isAnonymousFromAll || false,
+            donorMessage: localTrx.donorMessage || "",
             donatedAt: new Date(),
             transactionId: mer_txnid,
-            paymentGateway: "aamarpay",
+            paymentMethod: "aamarpay",
         };
 
         const updatedCampaign = await Campaign.findOneAndUpdate(
@@ -231,8 +249,7 @@ export const handlePaymentSuccess = async (req, res) => {
             { 
                 status: "success", 
                 gatewayResponse: paymentData,
-                netAmount: parseFloat(amount),
-                platformFee: 0, // 100% goes to mission as per trust claim
+                netAmount: parseFloat(amount) - (localTrx.platformFee || 0),
                 verificationLevel: "server_confirmed"
             },
             { session }

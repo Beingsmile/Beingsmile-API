@@ -42,6 +42,18 @@ const transactionSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    isAnonymous: {
+      type: Boolean,
+      default: false,
+    },
+    isAnonymousFromAll: {
+      type: Boolean,
+      default: false,
+    },
+    donorMessage: {
+      type: String,
+      maxlength: 500,
+    },
     netAmount: {
       type: Number,
       default: 0,
