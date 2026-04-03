@@ -23,6 +23,7 @@ import {
   addReply,
   getComments,
   getPublicPlatformSettings,
+  deletePendingUpdate,
 } from '../controllers/campaignController.js';
 import { authenticate } from '../middleware/campaignMiddleware.js';
 import { verifyJwtOrLogout, optionalVerifyToken } from '../middleware/authMiddleware.js';
@@ -48,6 +49,7 @@ router.get('/:id',               optionalVerifyToken, getCampaignById);
 // ── Mission updates ───────────────────────────────────────────────────────────
 router.get('/:id/updates',                               getCampaignUpdates);
 router.post('/:id/updates',      authenticate,           submitPendingUpdate);
+router.delete('/:id/updates/:updateId', authenticate,    deletePendingUpdate);
 
 // ── Mission settings (creator) ────────────────────────────────────────────────
 router.patch('/:id',             authenticate,           updateCampaign);
