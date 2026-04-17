@@ -29,16 +29,29 @@ export const createNotification = async ({ recipient, sender, title, message, ty
  */
 export const notifyDonation = async (campaign, donation) => {
   const fundraiserId = campaign.creator;
-  const donorName = donation.isAnonymous ? "Someone" : "A generous donor";
+  const donorId = donation.donor;
+  const donorName = donation.isAnonymous ? "Someone" : (donation.donorName || "A generous donor");
   
+  // 1. Notify Fundraiser
   await createNotification({
     recipient: fundraiserId,
-    sender: donation.donor,
+    sender: donorId,
     title: "New Donation Received",
     message: `${donorName} just donated ৳${donation.amount} to your campaign "${campaign.title}".`,
     type: "donation",
     relatedId: campaign._id,
   });
+
+  // 2. Notify Donor (if they are a registered user)
+  if (donorId) {
+    await createNotification({
+      recipient: donorId,
+      title: "Donation Successful",
+      message: `Thank you! Your donation of ৳${donation.amount} to "${campaign.title}" has been successfully processed.`,
+      type: "donation",
+      relatedId: campaign._id,
+    });
+  }
 };
 
 /**

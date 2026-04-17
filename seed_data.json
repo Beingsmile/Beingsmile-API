@@ -1,0 +1,481 @@
+{
+  "users": [
+    {
+      "_id": { "$oid": "60f7a9b0c058c48a7b8e1a11" },
+      "firebaseUid": "srfhZ006CFOnmFCrNhqWPCZofPg2",
+      "email": "atiksafinmd1@gmail.com",
+      "name": "Atik Admin",
+      "slug": "atik-admin",
+      "role": "admin",
+      "userType": "donor",
+      "isEmailVerified": true,
+      "status": "active",
+      "identity": { "isVerified": true },
+      "metrics": {
+        "totalDonated": 95000,
+        "totalRaised": 0,
+        "campaignCount": 0
+      },
+      "createdAt": { "$date": "2026-03-01T10:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "60f7a9b0c058c48a7b8e1a22" },
+      "firebaseUid": "dGS9MJVcvmgfw4Eze1yPx2AixlS2",
+      "email": "atikurr.contact@gmail.com",
+      "name": "Atik User",
+      "slug": "atik-user",
+      "role": "user",
+      "userType": "fundraiser",
+      "isEmailVerified": true,
+      "status": "active",
+      "identity": {
+        "idType": "NID",
+        "isVerified": true,
+        "idNumber": "19948291039",
+        "verifiedAt": { "$date": "2026-03-05T12:00:00.000Z" }
+      },
+      "metrics": {
+        "totalDonated": 0,
+        "totalRaised": 125000,
+        "campaignCount": 5
+      },
+      "createdAt": { "$date": "2026-03-02T10:00:00.000Z" }
+    }
+  ],
+  "verificationRequests": [
+    {
+      "_id": { "$oid": "60f7a9b0c058c48a7b8e3a10" },
+      "user": { "$oid": "60f7a9b0c058c48a7b8e1a22" },
+      "userType": "fundraiser",
+      "identityType": "NID",
+      "identityNumber": "WRONG_ID",
+      "reason": "Want to receive payouts.",
+      "documents": [
+        { "type": "id_front", "url": "https://res.cloudinary.com/dsah8exzi/image/upload/v1774950798/user_verifications/1774950799770_0.47900757351030854.png" }
+      ],
+      "status": "rejected",
+      "adminMessage": "Missing the back part of your NID card.",
+      "createdAt": { "$date": "2026-03-03T10:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "60f7a9b0c058c48a7b8e3a11" },
+      "user": { "$oid": "60f7a9b0c058c48a7b8e1a22" },
+      "userType": "fundraiser",
+      "identityType": "NID",
+      "identityNumber": "19948291039",
+      "reason": "Re-submitting with both sides attached clearly.",
+      "documents": [
+        { "type": "id_front", "url": "https://res.cloudinary.com/dsah8exzi/image/upload/v1774950798/user_verifications/1774950799770_0.47900757351030854.png" },
+        { "type": "id_back", "url": "https://res.cloudinary.com/dsah8exzi/image/upload/v1774950800/user_verifications/1774950803856_0.6594429096768357.png" }
+      ],
+      "status": "approved",
+      "createdAt": { "$date": "2026-03-04T10:00:00.000Z" }
+    }
+  ],
+  "campaigns": [
+    {
+      "_id": { "$oid": "60f7a9b0c058c48a7b8e2a11" },
+      "title": "Build a Village High School",
+      "tagline": "Bringing secondary education to rural children.",
+      "description": "Right now, countless children in our village have to walk 15 kilometers a day just to attend high school. Because of this, massive dropout rates plague our community. Our goal is to transform lives by establishing a local, fully functional high school. The funds cover construction, the hiring of qualified teachers, computer labs, library resources, and playground spaces. Let us ensure the future path is filled with knowledge and opportunities instead of exhaustion and neglect. Every donation is a brick in the foundation of their future.",
+      "location": "Rangpur, Bangladesh",
+      "creator": { "$oid": "60f7a9b0c058c48a7b8e1a22" },
+      "creatorUsername": "Atik User",
+      "category": "Education",
+      "goalAmount": 100000,
+      "currentAmount": 65000,
+      "withdrawnAmount": 10000,
+      "coverImage": "https://res.cloudinary.com/dsah8exzi/image/upload/v1754237014/campaign_covers/1754237014066.png",
+      "images": ["https://res.cloudinary.com/dsah8exzi/image/upload/v1754237101/campaign_covers/1754237100969.jpg"],
+      "trendingScore": 120,
+      "donations": [
+        {
+          "donor": { "$oid": "60f7a9b0c058c48a7b8e1a11" },
+          "donorName": "Atik Admin",
+          "amount": 50000,
+          "transactionId": "TXN_C1_1",
+          "donorMessage": "Amazing work for the local community! Keep it up.",
+          "donatedAt": { "$date": "2026-03-20T10:00:00.000Z" }
+        },
+        {
+          "donor": null,
+          "donorName": "Anonymous Donor",
+          "amount": 15000,
+          "transactionId": "TXN_C1_2",
+          "isAnonymous": true,
+          "donorMessage": "God bless this initiative.",
+          "donatedAt": { "$date": "2026-03-22T10:00:00.000Z" }
+        }
+      ],
+      "comments": [
+        {
+          "user": { "$oid": "60f7a9b0c058c48a7b8e1a11" },
+          "name": "Atik Admin",
+          "text": "How long will the construction take once funded?",
+          "createdAt": { "$date": "2026-03-21T10:00:00.000Z" },
+          "replies": [
+            {
+               "user": { "$oid": "60f7a9b0c058c48a7b8e1a22" },
+               "name": "Atik User",
+               "text": "We estimate 6 months for the core infrastructure once we hit 50k BDT.",
+               "createdAt": { "$date": "2026-03-21T12:00:00.000Z" }
+            }
+          ]
+        }
+      ],
+      "status": "active",
+      "createdAt": { "$date": "2026-03-10T10:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "60f7a9b0c058c48a7b8e2a12" },
+      "title": "Emergency Cyclone Relief Shelter",
+      "tagline": "Help coastal families survive the cyclone season safely.",
+      "description": "Cyclones ravage the coastal lines every single year, wiping out homes, livestock, and most devastatingly, human lives. We urgently need to establish emergency storm shelters made of reinforced concrete that can house over 200 individuals simultaneously. We have land donated by the local government, but we need immediate capital to procure the steel, building permits, food storages, and emergency medical supplies required to make these shelters resilient. Your contribution provides literal shelter against the storm.",
+      "location": "Khulna, Bangladesh",
+      "creator": { "$oid": "60f7a9b0c058c48a7b8e1a22" },
+      "creatorUsername": "Atik User",
+      "category": "Disaster Relief",
+      "goalAmount": 200000,
+      "currentAmount": 25000,
+      "withdrawnAmount": 0,
+      "coverImage": "https://res.cloudinary.com/dsah8exzi/image/upload/v1754236921/campaign_covers/1754236920953.webp",
+      "images": [],
+      "trendingScore": 34,
+      "isFeatured": true,
+      "donations": [
+        {
+          "donor": { "$oid": "60f7a9b0c058c48a7b8e1a11" },
+          "donorName": "Atik Admin",
+          "amount": 25000,
+          "transactionId": "TXN_C2_1",
+          "donorMessage": "This is so critical for Khulna.",
+          "donatedAt": { "$date": "2026-03-25T10:00:00.000Z" }
+        }
+      ],
+      "status": "active",
+      "createdAt": { "$date": "2026-03-15T10:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "60f7a9b0c058c48a7b8e2a13" },
+      "title": "Medical Support for Child Cancer",
+      "tagline": "Life-saving chemotherapy treatment for local children.",
+      "description": "Pediatric cancer requires rigorous, expensive treatment that families from low-income households simply cannot afford. This fund is exclusively dedicated to providing life-saving chemotherapy, intensive care unit resources, pain relief medicines, and nutritional counseling for children diagnosed with Leukemia and other aggressive cancers at the Dhaka Shishu Hospital. Every penny bypasses bureaucratic tape and goes directly into paying the pharmacy and hospital invoices for these marginalized families. Give them hope.",
+      "location": "Dhaka, Bangladesh",
+      "creator": { "$oid": "60f7a9b0c058c48a7b8e1a22" },
+      "creatorUsername": "Atik User",
+      "category": "Health & Medical",
+      "goalAmount": 500000,
+      "currentAmount": 10000,
+      "withdrawnAmount": 0,
+      "coverImage": "https://res.cloudinary.com/dsah8exzi/image/upload/v1754236873/campaign_covers/1754236872837.jpg",
+      "images": [],
+      "trendingScore": 12,
+      "donations": [
+        {
+          "donor": { "$oid": "60f7a9b0c058c48a7b8e1a11" },
+          "donorName": "Atik Admin",
+          "amount": 10000,
+          "transactionId": "TXN_C3_1",
+          "donatedAt": { "$date": "2026-04-01T10:00:00.000Z" }
+        }
+      ],
+      "status": "active",
+      "createdAt": { "$date": "2026-03-25T10:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "60f7a9b0c058c48a7b8e2a14" },
+      "title": "Rescue & Rehab Free Roaming Animals",
+      "tagline": "Vaccines, shelter, and neutering for street dogs.",
+      "description": "Street dogs and cats across the city face daily harsh realities: starvation, abuse, untreated infections, and harsh weather. We are a small team of passionate vets and volunteers working to neutralize these issues by actively rescuing wounded strays, providing free sterilization to manage populations humanely, and hosting weekly adoption fairs. We need your backing to purchase surgical tools, 100 rabies vaccines, dog food, and to maintain our 20-kennel shelter outside the urban core.",
+      "location": "Sylhet, Bangladesh",
+      "creator": { "$oid": "60f7a9b0c058c48a7b8e1a22" },
+      "creatorUsername": "Atik User",
+      "category": "Animals",
+      "goalAmount": 60000,
+      "currentAmount": 0,
+      "withdrawnAmount": 0,
+      "coverImage": "https://res.cloudinary.com/dsah8exzi/image/upload/v1754237181/campaign_covers/1754237181247.png",
+      "images": ["https://res.cloudinary.com/dsah8exzi/image/upload/v1754235914/campaign_covers/1754235914240.jpg"],
+      "status": "active",
+      "createdAt": { "$date": "2026-04-05T10:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "60f7a9b0c058c48a7b8e2a15" },
+      "title": "Clean Water Wells Installation Project",
+      "tagline": "Access to pure drinking water in arid zones.",
+      "description": "More than 5,000 residents in this neglected arid region suffer from acute waterborne illnesses due to drinking from contaminated surface ponds. We are stepping in to bore deep tube-wells reaching safe aquifers, bypassing arsenic-layered depths. Each well costs roughly 25,000 BDT to commission, including labor, concrete casing, and pumping mechanics. The target amount will enable us to install 10 robust wells spread strategically to ensure no family has to walk more than 500 meters for pure, sanitary drinking water.",
+      "location": "Rajshahi, Bangladesh",
+      "creator": { "$oid": "60f7a9b0c058c48a7b8e1a22" },
+      "creatorUsername": "Atik User",
+      "category": "Community Development",
+      "goalAmount": 250000,
+      "currentAmount": 250000,
+      "withdrawnAmount": 250000,
+      "coverImage": "https://res.cloudinary.com/dsah8exzi/image/upload/v1754236634/campaign_covers/1754236633925.jpg",
+      "images": [],
+      "status": "completed",
+      "donations": [
+        {
+          "donor": { "$oid": "60f7a9b0c058c48a7b8e1a11" },
+          "donorName": "Atik Admin",
+          "amount": 250000,
+          "transactionId": "TXN_C5_MAX",
+          "donorMessage": "I'll fund all 10 wells. Please proceed with the engineering plans immediately.",
+          "donatedAt": { "$date": "2026-03-01T10:00:00.000Z" }
+        }
+      ],
+      "createdAt": { "$date": "2026-02-10T10:00:00.000Z" }
+    }
+  ],
+  "transactions": [
+    {
+      "_id": { "$oid": "60f7a9b0c058c48a7b8e4a00" },
+      "transactionId": "TXN_C1_FAILED",
+      "campaign": { "$oid": "60f7a9b0c058c48a7b8e2a11" },
+      "user": { "$oid": "60f7a9b0c058c48a7b8e1a11" },
+      "amount": 5000,
+      "status": "failed",
+      "errorMessage": "Insufficient funds in checking account.",
+      "customerDetails": { "name": "Atik Admin", "email": "atiksafinmd1@gmail.com" },
+      "createdAt": { "$date": "2026-03-19T10:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "60f7a9b0c058c48a7b8e4a01" },
+      "transactionId": "TXN_C1_1",
+      "campaign": { "$oid": "60f7a9b0c058c48a7b8e2a11" },
+      "user": { "$oid": "60f7a9b0c058c48a7b8e1a11" },
+      "amount": 50000,
+      "netAmount": 49000,
+      "platformFee": 1000,
+      "status": "success",
+      "customerDetails": { "name": "Atik Admin", "email": "atiksafinmd1@gmail.com" },
+      "createdAt": { "$date": "2026-03-20T10:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "60f7a9b0c058c48a7b8e4a02" },
+      "transactionId": "TXN_C1_2",
+      "campaign": { "$oid": "60f7a9b0c058c48a7b8e2a11" },
+      "amount": 15000,
+      "netAmount": 14700,
+      "platformFee": 300,
+      "status": "success",
+      "isAnonymous": true,
+      "customerDetails": { "name": "Anonymous Donor", "email": "mystery@example.com" },
+      "createdAt": { "$date": "2026-03-22T10:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "60f7a9b0c058c48a7b8e4a03" },
+      "transactionId": "TXN_C2_1",
+      "campaign": { "$oid": "60f7a9b0c058c48a7b8e2a12" },
+      "user": { "$oid": "60f7a9b0c058c48a7b8e1a11" },
+      "amount": 25000,
+      "netAmount": 24500,
+      "platformFee": 500,
+      "status": "success",
+      "createdAt": { "$date": "2026-03-25T10:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "60f7a9b0c058c48a7b8e4a04" },
+      "transactionId": "TXN_C3_1",
+      "campaign": { "$oid": "60f7a9b0c058c48a7b8e2a13" },
+      "user": { "$oid": "60f7a9b0c058c48a7b8e1a11" },
+      "amount": 10000,
+      "netAmount": 9800,
+      "platformFee": 200,
+      "status": "success",
+      "createdAt": { "$date": "2026-04-01T10:00:00.000Z" }
+    },
+    {
+      "_id": { "$oid": "60f7a9b0c058c48a7b8e4a05" },
+      "transactionId": "TXN_C5_MAX",
+      "campaign": { "$oid": "60f7a9b0c058c48a7b8e2a15" },
+      "user": { "$oid": "60f7a9b0c058c48a7b8e1a11" },
+      "amount": 250000,
+      "netAmount": 250000,
+      "platformFee": 0,
+      "status": "success",
+      "createdAt": { "$date": "2026-03-01T10:00:00.000Z" }
+    }
+  ],
+  "withdrawalRequests": [
+    {
+      "_id": { "$oid": "60f7a9b0c058c48a7b8e5a01" },
+      "campaign": { "$oid": "60f7a9b0c058c48a7b8e2a15" },
+      "user": { "$oid": "60f7a9b0c058c48a7b8e1a22" },
+      "amount": 250000,
+      "status": "completed",
+      "bankDetails": {
+        "mobileMoneyType": "bkash",
+        "mobileMoneyNumber": "017X-XXXXXXX"
+      },
+      "transactionReference": "BANK_CLEARING_250K",
+      "proofDocument": "https://res.cloudinary.com/dsah8exzi/image/upload/v1774950798/user_verifications/1774950799770_0.47900757351030854.png",
+      "adminNotes": "Fully approved and transferred to provided Bkash account.",
+      "requestedAt": { "$date": "2026-03-05T10:00:00.000Z" },
+      "processedAt": { "$date": "2026-03-06T10:00:00.000Z" },
+      "processedBy": { "$oid": "60f7a9b0c058c48a7b8e1a11" }
+    },
+    {
+      "_id": { "$oid": "60f7a9b0c058c48a7b8e5a02" },
+      "campaign": { "$oid": "60f7a9b0c058c48a7b8e2a11" },
+      "user": { "$oid": "60f7a9b0c058c48a7b8e1a22" },
+      "amount": 10000,
+      "status": "completed",
+      "bankDetails": {
+        "accountName": "Atik User",
+        "accountNumber": "981249814981",
+        "bankName": "City Bank",
+        "branchName": "Gulshan"
+      },
+      "transactionReference": "ROUTING_54984A",
+      "proofDocument": "https://res.cloudinary.com/dsah8exzi/image/upload/v1774950798/user_verifications/1774950799770_0.47900757351030854.png",
+      "requestedAt": { "$date": "2026-04-10T10:00:00.000Z" },
+      "processedAt": { "$date": "2026-04-11T10:00:00.000Z" },
+      "processedBy": { "$oid": "60f7a9b0c058c48a7b8e1a11" }
+    },
+    {
+      "_id": { "$oid": "60f7a9b0c058c48a7b8e5a03" },
+      "campaign": { "$oid": "60f7a9b0c058c48a7b8e2a11" },
+      "user": { "$oid": "60f7a9b0c058c48a7b8e1a22" },
+      "amount": 20000,
+      "status": "pending",
+      "bankDetails": {
+        "accountName": "Atik User",
+        "accountNumber": "981249814981",
+        "bankName": "City Bank",
+        "branchName": "Gulshan"
+      },
+      "requestedAt": { "$date": "2026-04-12T08:00:00.000Z" }
+    }
+  ],
+  "wallets": [
+    {
+      "_id": { "$oid": "60f7a9b0c058c48a7b8e6a11" },
+      "user": { "$oid": "60f7a9b0c058c48a7b8e1a22" },
+      "balance": 90000,
+      "totalEarnings": 350000,
+      "totalWithdrawn": 260000,
+      "transactions": [
+        {
+          "type": "credit",
+          "amount": 250000,
+          "category": "donation",
+          "description": "Donation received for: Clean Water Wells",
+          "campaignId": { "$oid": "60f7a9b0c058c48a7b8e2a15" },
+          "relatedId": "TXN_C5_MAX",
+          "timestamp": { "$date": "2026-03-01T10:00:00.000Z" }
+        },
+        {
+          "type": "debit",
+          "amount": 250000,
+          "category": "withdrawal",
+          "description": "Payout completed for mission: Clean Water Wells",
+          "campaignId": { "$oid": "60f7a9b0c058c48a7b8e2a15" },
+          "relatedId": "60f7a9b0c058c48a7b8e5a01",
+          "timestamp": { "$date": "2026-03-06T10:00:00.000Z" }
+        },
+        {
+          "type": "credit",
+          "amount": 50000,
+          "category": "donation",
+          "description": "Donation received for: Build a Village High School",
+          "campaignId": { "$oid": "60f7a9b0c058c48a7b8e2a11" },
+          "relatedId": "TXN_C1_1",
+          "timestamp": { "$date": "2026-03-20T10:00:00.000Z" }
+        },
+        {
+          "type": "credit",
+          "amount": 15000,
+          "category": "donation",
+          "description": "Donation received for: Build a Village High School",
+          "campaignId": { "$oid": "60f7a9b0c058c48a7b8e2a11" },
+          "relatedId": "TXN_C1_2",
+          "timestamp": { "$date": "2026-03-22T10:00:00.000Z" }
+        },
+        {
+          "type": "credit",
+          "amount": 25000,
+          "category": "donation",
+          "description": "Donation received for: Emergency Cyclone Relief",
+          "campaignId": { "$oid": "60f7a9b0c058c48a7b8e2a12" },
+          "relatedId": "TXN_C2_1",
+          "timestamp": { "$date": "2026-03-25T10:00:00.000Z" }
+        },
+        {
+          "type": "credit",
+          "amount": 10000,
+          "category": "donation",
+          "description": "Donation received for: Medical Support",
+          "campaignId": { "$oid": "60f7a9b0c058c48a7b8e2a13" },
+          "relatedId": "TXN_C3_1",
+          "timestamp": { "$date": "2026-04-01T10:00:00.000Z" }
+        },
+        {
+          "type": "debit",
+          "amount": 10000,
+          "category": "withdrawal",
+          "description": "Payout completed for mission: Build a Village High School",
+          "campaignId": { "$oid": "60f7a9b0c058c48a7b8e2a11" },
+          "relatedId": "60f7a9b0c058c48a7b8e5a02",
+          "timestamp": { "$date": "2026-04-11T10:00:00.000Z" }
+        }
+      ]
+    }
+  ],
+  "notifications": [
+    {
+       "_id": { "$oid": "60f7a9b0c058c48a7b8e7a01" },
+       "recipient": { "$oid": "60f7a9b0c058c48a7b8e1a22" },
+       "title": "Campaign Verified",
+       "message": "Your campaign 'Build a Village High School' is now active publicly.",
+       "type": "campaign_status",
+       "isRead": true,
+       "createdAt": { "$date": "2026-03-10T11:00:00.000Z" }
+    },
+    {
+       "_id": { "$oid": "60f7a9b0c058c48a7b8e7a02" },
+       "recipient": { "$oid": "60f7a9b0c058c48a7b8e1a22" },
+       "title": "New Huge Donation!",
+       "message": "Atik Admin just donated 50,000 BDT to your campaign.",
+       "type": "donation",
+       "isRead": true,
+       "createdAt": { "$date": "2026-03-20T10:01:00.000Z" }
+    },
+    {
+       "_id": { "$oid": "60f7a9b0c058c48a7b8e7a03" },
+       "recipient": { "$oid": "60f7a9b0c058c48a7b8e1a22" },
+       "title": "New Comment",
+       "message": "Atik Admin left a comment on your High School Campaign.",
+       "type": "system",
+       "isRead": false,
+       "createdAt": { "$date": "2026-03-21T10:01:00.000Z" }
+    },
+    {
+       "_id": { "$oid": "60f7a9b0c058c48a7b8e7a04" },
+       "recipient": { "$oid": "60f7a9b0c058c48a7b8e1a22" },
+       "title": "Withdrawal Completed",
+       "message": "The funds (৳10000) have been transferred to your account. Ref: ROUTING_54984A",
+       "type": "payout_processed",
+       "isRead": false,
+       "createdAt": { "$date": "2026-04-11T10:05:00.000Z" }
+    }
+  ],
+  "platformSettings": [
+    {
+      "_id": { "$oid": "60f7a9b0c058c48a7b8e8a11" },
+      "donationFee": {
+        "mode": "optional_button",
+        "type": "percent",
+        "percent": 2.5,
+        "fixed": 10,
+        "label": "Support BeingSmile Platform"
+      },
+      "minimumDonation": 100,
+      "maximumDonation": 500000,
+      "payoutHoldDays": 30,
+      "minimumWithdrawAmount": 500,
+      "maintenanceMode": false,
+      "createdAt": { "$date": "2026-03-01T00:00:00.000Z" }
+    }
+  ]
+}

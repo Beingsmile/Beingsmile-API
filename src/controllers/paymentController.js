@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Stripe from "stripe";
 import Campaign from "../models/Campaign.js";
 
@@ -36,7 +37,7 @@ export const createPaymentIntent = async (req, res) => {
             metadata: {
                 campaignId: campaignId,
                 campaignTitle: campaign.title,
-                userId: req.userId || "anonymous", // From auth middleware if available
+                userId: req.uid || "anonymous", // From auth middleware if available
             },
         });
 
@@ -92,38 +93,12 @@ export const handleWebhook = async (req, res) => {
 
 // Helper: Handle successful payment
 const handlePaymentSuccess = async (paymentIntent) => {
-    const { campaignId, userId } = paymentIntent.metadata;
-    const amount = paymentIntent.amount / 100; // Convert cents to dollars
-
     try {
-        // Find the campaign
-        const campaign = await Campaign.findById(campaignId);
-        if (!campaign) {
-            console.error(`Campaign not found: ${campaignId}`);
-            return;
-        }
-
-        // Add donation to campaign
-        const donation = {
-            donor: userId && userId !== "anonymous" ? userId : null,
-            amount: amount,
-            isAnonymous: !userId || userId === "anonymous",
-            message: paymentIntent.metadata.donorMessage || "",
-            donatedAt: new Date(),
-            paymentIntentId: paymentIntent.id,
-        };
-
-        campaign.donations.push(donation);
-
-        // Update current amount
-        campaign.currentAmount += amount;
-
-        // Save campaign
-        await campaign.save();
-
-        console.log(`✅ Donation recorded: $${amount} to campaign ${campaignId}`);
+        const { processDonationSequence } = await import("../utils/donationUtils.js");
+        await processDonationSequence(paymentIntent.id, paymentIntent, "stripe");
+        console.log(`✅ [STRIPE_DONATION] Recorded: $${paymentIntent.amount / 100} for campaign ${paymentIntent.metadata?.campaignId}`);
     } catch (error) {
-        console.error("Error recording donation:", error);
+        console.error("Error recording donation via Stripe:", error);
     }
 };
 
@@ -136,15 +111,16 @@ const handlePaymentFailure = async (paymentIntent) => {
 // Get User Donations
 export const getUserDonations = async (req, res) => {
     try {
-        const userId = req.userId; // From auth middleware
+        const userId = req.uid; // From auth middleware
 
         if (!userId) {
             return res.status(401).json({ error: "Authentication required" });
         }
 
         // Find all campaigns where user has donated
+        const userObjectId = new mongoose.Types.ObjectId(userId);
         const campaigns = await Campaign.find({
-            "donations.donor": userId,
+            "donations.donor": userObjectId,
         }).select("title donations currentAmount goalAmount");
 
         // Extract user's donations from each campaign

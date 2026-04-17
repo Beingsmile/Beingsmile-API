@@ -42,7 +42,8 @@ const notificationSchema = new mongoose.Schema(
         "campaign_unfeatured",           // Creator: their campaign was unfeatured
         "new_subscriber",                // Creator: someone subscribed to mission notifications
         "comment_reply",                 // User: someone replied to their comment
-        "new_comment",                   // Creator: someone commented on their campaign
+        "payout_requested",              // Admin: someone requested a payout
+        "payout_update",                 // Creator: admin approved/rejected
         "payout_processed",              // Creator: their withdrawal was processed
         "payout_rejected",               // Creator: their withdrawal was rejected
       ],

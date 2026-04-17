@@ -42,8 +42,8 @@ export const verifyToken = (req, res, next) => {
 export const isAdmin = async (req, res, next) => {
   try {
     const user = await User.findById(req.uid);
-    if (!user || user.role !== 'admin') {
-      return res.status(403).json({ message: "Forbidden: Admin access required" });
+    if (!user || !['admin', 'moderator'].includes(user.role)) {
+      return res.status(403).json({ message: "Forbidden: Admin or Moderator access required" });
     }
     next();
   } catch (err) {

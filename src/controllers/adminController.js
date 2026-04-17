@@ -1,5 +1,6 @@
 import Campaign from "../models/Campaign.js";
 import User from "../models/User.js";
+import Transaction from "../models/Transaction.js";
 import VerificationRequest from "../models/VerificationRequest.js";
 import WithdrawalRequest from "../models/WithdrawalRequest.js";
 import Notification from "../models/Notification.js";
@@ -16,6 +17,23 @@ export const getAdminStats = async (req, res) => {
       { $group: { _id: null, total: { $sum: "$donations.amount" } } }
     ]);
 
+    // Financial Metrics from Transactions
+    const finance = await Transaction.aggregate([
+      { $match: { status: 'success' } },
+      { $group: { 
+          _id: null, 
+          totalFees: { $sum: "$platformFee" },
+          totalNet: { $sum: "$netAmount" },
+          totalGross: { $sum: "$amount" }
+        } 
+      }
+    ]);
+
+    const payoutStats = await WithdrawalRequest.aggregate([
+      { $match: { status: 'completed' } },
+      { $group: { _id: null, total: { $sum: "$amount" } } }
+    ]);
+
     const stats = {
       totalUsers: await User.countDocuments(),
       totalDonors: await User.countDocuments({ userType: 'donor' }),
@@ -24,9 +42,10 @@ export const getAdminStats = async (req, res) => {
       pendingCampaigns: await Campaign.countDocuments({ status: 'pending' }),
       activeCampaigns: await Campaign.countDocuments({ status: 'active' }),
       totalRaised: totalDonations[0]?.total || 0,
-      totalPayouts: await Campaign.aggregate([
-        { $group: { _id: null, total: { $sum: "$withdrawnAmount" } } }
-      ]).then(res => res[0]?.total || 0),
+      totalPayouts: payoutStats[0]?.total || 0,
+      platformFees: finance[0]?.totalFees || 0,
+      netDonations: finance[0]?.totalNet || 0,
+      platformHoldings: (finance[0]?.totalGross || 0) - (payoutStats[0]?.total || 0),
       pendingVerifications: await VerificationRequest.countDocuments({ status: 'pending' }),
       pendingWithdrawals: await WithdrawalRequest.countDocuments({ status: 'pending' }),
     };
@@ -273,8 +292,8 @@ export const getAllCampaignsAdmin = async (req, res) => {
   try {
     const { status, category, search, page = 1, limit = 12, featured } = req.query;
     const query = {};
-    if (status) query.status = status;
-    if (category) query.category = category;
+    if (status && status !== 'all') query.status = status;
+    if (category && category !== 'all') query.category = category;
     if (featured !== undefined) query.isFeatured = featured === 'true';
     if (search) {
       query.$or = [
@@ -425,13 +444,13 @@ export const toggleFeatured = async (req, res) => {
     const { id } = req.params;
     const campaign = await Campaign.findById(id);
     if (!campaign) return res.status(404).json({ success: false, message: 'Campaign not found' });
-    if (campaign.status !== 'active' && !campaign.isFeatured) {
-      return res.status(400).json({ success: false, message: 'Only active campaigns can be featured.' });
+    
+    // Allow featuring any campaign that is not suspended
+    if (campaign.status === 'suspended') {
+      return res.status(400).json({ success: false, message: 'Suspended campaigns cannot be featured.' });
     }
 
     campaign.isFeatured = !campaign.isFeatured;
-    // Suspended campaigns cannot be featured
-    if (campaign.status === 'suspended') campaign.isFeatured = false;
     await campaign.save();
 
     await Notification.create({
@@ -507,6 +526,46 @@ export const updatePlatformSettings = async (req, res) => {
       { new: true, upsert: true, runValidators: true }
     );
     res.json({ success: true, settings });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ══════════════════════════════════════════════════════════════════
+// GET ALL TRANSACTIONS (admin)
+// ══════════════════════════════════════════════════════════════════
+export const getAllTransactionsAdmin = async (req, res) => {
+  try {
+    const { status, search, page = 1, limit = 10 } = req.query;
+    const query = {};
+
+    if (status && status !== 'all') query.status = status;
+    if (search) {
+      query.$or = [
+        { transactionId: { $regex: search, $options: 'i' } },
+        { "customerDetails.email": { $regex: search, $options: 'i' } },
+        { "customerDetails.name": { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    const skip = (Number(page) - 1) * Number(limit);
+    const [transactions, total] = await Promise.all([
+      Transaction.find(query)
+        .populate("campaign", "title")
+        .populate("user", "name email")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Number(limit)),
+      Transaction.countDocuments(query),
+    ]);
+
+    res.json({
+      success: true,
+      transactions,
+      total,
+      page: Number(page),
+      totalPages: Math.ceil(total / limit),
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

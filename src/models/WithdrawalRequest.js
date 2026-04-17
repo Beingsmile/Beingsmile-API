@@ -33,6 +33,7 @@ const withdrawalRequestSchema = new mongoose.Schema(
     },
     adminNotes: String,
     transactionReference: String, // Actual bank transfer ID
+    proofDocument: String, // URL/Path to the payment transcript or receipt image
     requestedAt: {
       type: Date,
       default: Date.now,

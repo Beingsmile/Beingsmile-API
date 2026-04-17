@@ -12,6 +12,7 @@ export const authenticate = (req, res, next) => {
     return res.status(403).json({ message: 'Invalid or expired token' });
   }
 
-  req.uid = decoded.id;
+  req.uid = decoded.id;    // Primary identifier used by most controllers
+  req.userId = decoded.id; // Secondary identifier for compatibility
   next();
 };

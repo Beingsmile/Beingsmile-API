@@ -63,6 +63,9 @@ const transactionSchema = new mongoose.Schema(
       enum: ["unverified", "server_confirmed", "manual_audit"],
       default: "unverified",
     },
+    gatewayTransactionId: {
+      type: String, // Store pg_txnid or Stripe intent ID here
+    },
   },
   { timestamps: true }
 );

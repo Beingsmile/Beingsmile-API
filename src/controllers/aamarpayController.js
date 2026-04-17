@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import axios from 'axios';
 import crypto from 'crypto';
 import Campaign from "../models/Campaign.js";
@@ -86,7 +87,7 @@ export const initiatePayment = async (req, res) => {
             cancel_url: `${process.env.API_URL}/api/payment/aamarpay/cancel`,
             // Optional parameters to track the campaign and user
             opt_a: campaignId,
-            opt_b: req.userId || "anonymous",
+            opt_b: req.uid || "anonymous",
             opt_c: campaign.title,
             opt_d: new Date().toISOString(),
             type: "json",
@@ -104,7 +105,7 @@ export const initiatePayment = async (req, res) => {
             await Transaction.create({
                 transactionId: tran_id,
                 campaign: campaignId,
-                user: req.userId === 'anonymous' ? null : req.userId,
+                user: req.uid === 'anonymous' ? null : req.uid,
                 amount: amount,
                 status: "initiated",
                 customerDetails: {
@@ -145,18 +146,9 @@ export const initiatePayment = async (req, res) => {
 
 // Handle payment success callback
 export const handlePaymentSuccess = async (req, res) => {
-    const session = await Campaign.startSession();
-    session.startTransaction();
     try {
         const paymentData = req.body;
-        const { mer_txnid, amount, opt_a, opt_b } = paymentData;
-
-        // Fetch transaction details from our DB for additional fields
-        const localTrx = await Transaction.findOne({ transactionId: mer_txnid }).session(session);
-        if (!localTrx) {
-            console.error(`[PAYMENT_CRITICAL] Local transaction not found for TXN: ${mer_txnid}`);
-            return res.redirect(`${process.env.FRONTEND_URL}/payment-failure?error=transaction_not_found`);
-        }
+        const { mer_txnid, amount } = paymentData;
 
         // 1. Server-to-Server Verification (CRITICAL for Security)
         const verification = await verifyPaymentAPI(mer_txnid);
@@ -164,7 +156,6 @@ export const handlePaymentSuccess = async (req, res) => {
         if (!verification || verification.pay_status !== "Successful") {
             console.error(`[PAYMENT_CRITICAL] Server-side verification failed for TXN: ${mer_txnid}`, verification);
             
-            // Log the suspected fraud attempt or failed verification
             await Transaction.findOneAndUpdate(
                 { transactionId: mer_txnid },
                 { 
@@ -177,96 +168,23 @@ export const handlePaymentSuccess = async (req, res) => {
             return res.redirect(`${process.env.FRONTEND_URL}/payment-failure?error=verification_failed`);
         }
 
-        // Verify that the amount and currency match
+        // Verify that the amount matches
         if (parseFloat(verification.amount) !== parseFloat(amount)) {
              console.error(`[PAYMENT_CRITICAL] Amount mismatch! Reported: ${amount}, Verified: ${verification.amount}`);
              return res.redirect(`${process.env.FRONTEND_URL}/payment-failure?error=amount_mismatch`);
         }
 
-        const campaignId = opt_a;
-        const userId = opt_b === "anonymous" ? null : opt_b;
+        // 2. Use the centralized atomic processor
+        const { processDonationSequence } = await import("../utils/donationUtils.js");
+        const result = await processDonationSequence(mer_txnid, paymentData, "aamarpay");
 
-        // 2. Idempotency Check: Verify if this transaction has already been processed
-        const existingCampaign = await Campaign.findOne({ "donations.transactionId": mer_txnid }).session(session);
-        if (existingCampaign) {
-            console.warn(`[PAYMENT_WARN] Duplicate callback detected for TXN: ${mer_txnid}. Skipping processing.`);
-            await session.commitTransaction();
-            session.endSession();
-            return res.redirect(`${process.env.FRONTEND_URL}/payment-success?tid=${mer_txnid}&amount=${amount}&duplicate=true`);
-        }
-
-        // 3. Atomic Update: Find and update campaign in one go
-        const donation = {
-            donor: userId,
-            donorName: localTrx.customerDetails?.name || "Anonymous",
-            donorEmail: localTrx.customerDetails?.email,
-            amount: parseFloat(amount),
-            platformFee: localTrx.platformFee || 0,
-            isAnonymous: localTrx.isAnonymous || false,
-            isAnonymousFromAll: localTrx.isAnonymousFromAll || false,
-            donorMessage: localTrx.donorMessage || "",
-            donatedAt: new Date(),
-            transactionId: mer_txnid,
-            paymentMethod: "aamarpay",
-        };
-
-        const updatedCampaign = await Campaign.findOneAndUpdate(
-            { _id: campaignId },
-            { 
-                $push: { donations: donation },
-                $inc: { currentAmount: parseFloat(amount) }
-            },
-            { session, new: true }
-        );
-
-        if (!updatedCampaign) {
-            throw new Error(`Campaign ${campaignId} not found during success callback`);
-        }
-
-        // 3. Update User's donation history if logged in
-        if (userId) {
-            await User.findByIdAndUpdate(
-                userId,
-                { 
-                    $push: { 
-                        donatedCampaigns: { 
-                            campaign: campaignId, 
-                            amount: parseFloat(amount), 
-                            donatedAt: new Date() 
-                        } 
-                    } 
-                },
-                { session }
-            );
-        }
-
-        // 4. Trigger Notification
-        await notifyDonation(updatedCampaign, donation);
-
-        // 5. Update Transaction record
-        await Transaction.findOneAndUpdate(
-            { transactionId: mer_txnid },
-            { 
-                status: "success", 
-                gatewayResponse: paymentData,
-                netAmount: parseFloat(amount) - (localTrx.platformFee || 0),
-                verificationLevel: "server_confirmed"
-            },
-            { session }
-        );
-
-        await session.commitTransaction();
-        session.endSession();
-
-        console.log(`[PAYMENT_SUCCESS] Successfully processed TXN: ${mer_txnid}. Campaign: ${campaignId}, Amount: ${amount}`);
+        console.log(`[PAYMENT_SUCCESS] Success callback handled for TXN: ${mer_txnid}. Campaign: ${result.campaign?._id}`);
 
         // Redirect to frontend success page
-        res.redirect(`${process.env.FRONTEND_URL}/payment-success?tid=${mer_txnid}&amount=${amount}`);
+        res.redirect(`${process.env.FRONTEND_URL}/payment-success?tid=${mer_txnid}&amount=${amount}${result.alreadyProcessed ? '&duplicate=true' : ''}`);
 
     } catch (error) {
-        await session.abortTransaction();
-        session.endSession();
-        console.error(`[PAYMENT_CRITICAL] Error processing payment success for TXN: ${req.body.mer_txnid}:`, error);
+        console.error(`[PAYMENT_CRITICAL] Error processing AamarPay success for TXN: ${req.body?.mer_txnid}:`, error);
         res.redirect(`${process.env.FRONTEND_URL}/payment-failure?error=processing_error`);
     }
 };
@@ -321,15 +239,16 @@ export const handlePaymentCancel = async (req, res) => {
 // Get user donations
 export const getUserDonations = async (req, res) => {
     try {
-        const userId = req.userId;
+        const userId = req.uid;
 
         if (!userId) {
             return res.status(401).json({ error: "Authentication required" });
         }
 
         // Find all campaigns where user has donated
+        const userObjectId = new mongoose.Types.ObjectId(userId);
         const campaigns = await Campaign.find({
-            "donations.donor": userId,
+            "donations.donor": userObjectId,
         }).select("title donations currentAmount goalAmount");
 
         // Extract user's donations from each campaign
@@ -341,9 +260,14 @@ export const getUserDonations = async (req, res) => {
                         campaignTitle: campaign.title,
                         campaignId: campaign._id,
                         amount: donation.amount,
-                        message: donation.message,
+                        platformFee: donation.platformFee || 0,
+                        totalAmount: (donation.amount || 0) + (donation.platformFee || 0),
+                        donorName: donation.donorName,
+                        donorEmail: donation.donorEmail,
+                        donorPhone: donation.donorPhone,
                         donatedAt: donation.donatedAt,
-                        paymentGateway: donation.paymentGateway || "unknown",
+                        paymentMethod: donation.paymentMethod || "unknown",
+                        transactionId: donation.transactionId || "N/A",
                     });
                 }
             });
@@ -356,5 +280,37 @@ export const getUserDonations = async (req, res) => {
     } catch (error) {
         console.error("Error fetching user donations:", error);
         res.status(500).json({ error: "Failed to fetch donations" });
+    }
+};
+
+// Get single transaction details by TID (Public Receipt Access)
+export const getTransactionByTid = async (req, res) => {
+    try {
+        const { tid } = req.params;
+        const transaction = await Transaction.findOne({ transactionId: tid })
+            .populate("campaign", "title");
+
+        if (!transaction) {
+            return res.status(404).json({ error: "Transaction not found" });
+        }
+
+        res.json({ 
+            success: true, 
+            transaction: {
+                tid: transaction.transactionId,
+                amount: transaction.amount,
+                netAmount: transaction.netAmount,
+                platformFee: transaction.platformFee,
+                customerName: transaction.customerDetails?.name,
+                customerEmail: transaction.customerDetails?.email,
+                customerPhone: transaction.customerDetails?.phone,
+                campaignTitle: transaction.campaign?.title,
+                donatedAt: transaction.createdAt,
+                paymentMethod: transaction.gatewayResponse?.card_type || "Aamarpay Secure"
+            } 
+        });
+    } catch (error) {
+        console.error("Error fetching transaction details:", error);
+        res.status(500).json({ error: "Server error" });
     }
 };

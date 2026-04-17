@@ -17,6 +17,7 @@ import {
   postAdminNotice,
   getPlatformSettings,
   updatePlatformSettings,
+  getAllTransactionsAdmin,
 } from "../controllers/adminController.js";
 import { verifyToken, isAdmin } from "../middleware/authMiddleware.js";
 
@@ -31,6 +32,7 @@ router.get("/stats",                                    getAdminStats);
 
 // ── Campaign Management ────────────────────────────────────────────────────
 router.get("/campaigns",                                getAllCampaignsAdmin);
+router.get("/transactions",                             getAllTransactionsAdmin);
 router.get("/pending-campaigns",                        getPendingCampaigns);
 router.patch("/campaigns/:id/review",                   reviewCampaign);
 router.patch("/campaigns/:id/featured",                 toggleFeatured);

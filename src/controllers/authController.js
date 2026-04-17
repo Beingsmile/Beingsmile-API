@@ -171,14 +171,39 @@ export const getUserByFirebaseUid = async (req, res) => {
 export const getPublicProfileBySlug = async (req, res) => {
   try {
     const { slug } = req.params;
-    const user = await User.findOne({ slug, status: 'active' })
-      .select('name avatar bio metrics userType identity.isVerified publicProfile createdAt');
+    
+    let query = { slug, status: 'active' };
+    
+    // Check if the slug is actually a valid MongoDB ID
+    if (mongoose.Types.ObjectId.isValid(slug)) {
+      query = { 
+        $or: [
+          { _id: slug, status: 'active' },
+          { slug: slug, status: 'active' }
+        ] 
+      };
+    }
+
+    const user = await User.findOne(query)
+      .select('name avatar bio metrics userType identity.isVerified publicProfile createdAt slug');
 
     if (!user) {
       return res.status(404).json({ message: "Profile not found" });
     }
 
-    res.status(200).json({ user });
+    // Fetch user's active campaigns to return in a single request (Optimization)
+    const Campaign = mongoose.model('Campaign');
+    const campaigns = await Campaign.find({
+      creator: user._id,
+      status: 'active'
+    }).select('title coverImage category goalAmount currentAmount').sort({ createdAt: -1 });
+
+    res.status(200).json({ 
+      user: {
+        ...user.toObject(),
+        campaigns
+      }
+    });
   } catch (error) {
     console.error("Error fetching public profile:", error);
     res.status(500).json({ message: "Server error" });

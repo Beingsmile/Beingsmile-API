@@ -3,7 +3,7 @@ import Campaign, { CAMPAIGN_CATEGORIES } from "../models/Campaign.js";
 import User from "../models/User.js";
 import PlatformSettings from "../models/PlatformSettings.js";
 import Notification from "../models/Notification.js";
-import { uploadImage } from '../utils/cloudinaryUtils.js';
+import { uploadImage, getSignedUrl } from '../utils/cloudinaryUtils.js';
 
 // ─── Helper: Send notification safely ────────────────────────────────────────
 const notify = async (data) => {
@@ -49,7 +49,7 @@ export const createCampaign = async (req, res) => {
     const uploadedDocs = [];
     if (verificationDocuments?.length) {
       for (const doc of verificationDocuments) {
-        const r = await uploadImage(doc, `campaign_docs/${Date.now()}_${Math.random()}`);
+        const r = await uploadImage(doc, `campaign_docs/${Date.now()}_${Math.random()}`, { type: "authenticated" });
         uploadedDocs.push(r.secure_url);
       }
     }
@@ -65,7 +65,14 @@ export const createCampaign = async (req, res) => {
       isFeatured: false,
     });
 
-    // Notify admins about new pending campaign
+    // ─── Post-Creation Handlers ─────────────────────────────────────
+    // 1. Auto-transition user to 'fundraiser' and increment count
+    await User.findByIdAndUpdate(req.uid, {
+      $set: { userType: 'fundraiser' },
+      $inc: { 'metrics.campaignCount': 1 }
+    });
+
+    // 2. Notify admins about new pending campaign
     const admins = await User.find({ role: { $in: ['admin', 'moderator'] } }).select('_id');
     await Notification.insertMany(admins.map(a => ({
       recipient: a._id,
@@ -108,7 +115,7 @@ export const getCampaignById = async (req, res) => {
     const campaignObj = campaign.toObject({ virtuals: true });
 
     if (!isAdmin && !isCreator) {
-      campaignObj.verificationDetails = { adminNotes: campaign.verificationDetails?.adminNotes };
+      campaignObj.verificationDetails = { adminNotes: campaign.verificationDetails?.adminNotes || "" };
       campaignObj.pendingUpdates = []; // Hide pending updates from public
       // Redact fully-anonymous donations
       campaignObj.donations = campaignObj.donations.map(d => {
@@ -120,14 +127,28 @@ export const getCampaignById = async (req, res) => {
         }
         return { ...d, donorEmail: undefined };
       });
-    } else if (isCreator && !isAdmin) {
-      // Creator can see public-anonymous names but not fully-anonymous ones
-      campaignObj.donations = campaignObj.donations.map(d => {
-        if (d.isAnonymousFromAll) {
-          return { ...d, donor: null, donorName: "Anonymous (Hidden)", donorEmail: undefined };
-        }
-        return { ...d, donorEmail: undefined };
-      });
+    } else {
+      // Secure documents with signed URLs for authorized users (Admin/Creator)
+      if (campaignObj.verificationDetails?.documents) {
+        campaignObj.verificationDetails.documents = campaignObj.verificationDetails.documents.map(docUrl => {
+          const parts = docUrl.split('/');
+          const filename = parts.pop();
+          const folder = parts[parts.length - 1] === 'v1' ? parts[parts.length - 2] : parts[parts.length - 1];
+          const publicId = `${folder}/${filename.split('.')[0]}`;
+          const format = filename.split('.').pop() || 'image';
+          return getSignedUrl(publicId, format === 'pdf' ? 'raw' : 'image', 'authenticated');
+        });
+      }
+
+      if (isCreator && !isAdmin) {
+        // Creator can see public-anonymous names but not fully-anonymous ones
+        campaignObj.donations = campaignObj.donations.map(d => {
+          if (d.isAnonymousFromAll) {
+            return { ...d, donor: null, donorName: "Anonymous (Hidden)", donorEmail: undefined };
+          }
+          return { ...d, donorEmail: undefined };
+        });
+      }
     }
 
     // Check if current user has recommended / saved this campaign
@@ -162,9 +183,31 @@ export const getUserCampaigns = async (req, res) => {
     const skip = (page - 1) * limit;
     const total = await Campaign.countDocuments({ creator: req.uid });
 
-    const campaigns = await Campaign.find({ creator: req.uid })
-      .select("title coverImage goalAmount currentAmount withdrawnAmount endDate creatorUsername category status isFeatured adminNotice trendingScore recommendations donations")
-      .skip(skip).limit(limit).sort({ createdAt: -1 });
+    const campaigns = await Campaign.aggregate([
+      { $match: { creator: new mongoose.Types.ObjectId(req.uid) } },
+      { $sort: { createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $project: {
+          title: 1,
+          coverImage: 1,
+          goalAmount: 1,
+          currentAmount: 1,
+          withdrawnAmount: 1,
+          endDate: 1,
+          creatorUsername: 1,
+          category: 1,
+          status: 1,
+          isFeatured: 1,
+          adminNotice: 1,
+          trendingScore: 1,
+          recommendations: 1,
+          donationCount: { $size: { $ifNull: ["$donations", []] } },
+          updateCount: { $size: { $ifNull: ["$updates", []] } },
+        }
+      }
+    ]);
 
     res.status(200).json({ campaigns, total, page, totalPages: Math.ceil(total / limit) });
   } catch (err) {
@@ -184,11 +227,20 @@ export const getAllCampaigns = async (req, res) => {
 
     const total = await Campaign.countDocuments({ status: "active" });
     const campaigns = await Campaign.find({ status: "active" })
-      .select("title coverImage goalAmount currentAmount endDate creatorUsername category status isFeatured recommendations donations")
+      .select("title coverImage goalAmount currentAmount endDate creatorUsername category status isFeatured recommendations donations savedBy")
       .skip(skip).limit(limit).sort({ createdAt: -1 })
       .populate("creator", "name");
 
-    res.status(200).json({ campaigns, total, page, totalPages: Math.ceil(total / limit) });
+    const campaignsWithSavedState = campaigns.map(c => {
+      const obj = c.toObject({ virtuals: true });
+      if (req.uid) {
+        obj.isSavedByMe = c.savedBy.some(s => s?.toString() === req.uid);
+      }
+      delete obj.savedBy; // Privacy: don't leak who else saved it
+      return obj;
+    });
+
+    res.status(200).json({ campaigns: campaignsWithSavedState, total, page, totalPages: Math.ceil(total / limit) });
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
@@ -246,17 +298,28 @@ export const getFilteredCampaigns = async (req, res) => {
         { $sort: sort === "close_to_goal" ? { fundingPercent: -1 } : { recommendCount: -1, trendingScore: -1 } },
         { $skip: skip },
         { $limit: Number(limit) },
-        { $project: { title: 1, coverImage: 1, goalAmount: 1, currentAmount: 1, endDate: 1, creatorUsername: 1, category: 1, status: 1, isFeatured: 1, recommendations: 1, donations: 1, tagline: 1, trendingScore: 1 } },
+        { $project: { title: 1, coverImage: 1, goalAmount: 1, currentAmount: 1, endDate: 1, creatorUsername: 1, category: 1, status: 1, isFeatured: 1, recommendations: 1, donations: 1, tagline: 1, trendingScore: 1, savedBy: 1 } },
       ]);
     } else {
       campaigns = await Campaign.find(query)
-        .select("title coverImage goalAmount currentAmount endDate creatorUsername category status isFeatured recommendations donations tagline trendingScore")
+        .select("title coverImage goalAmount currentAmount endDate creatorUsername category status isFeatured recommendations donations tagline trendingScore savedBy")
         .sort(sortObj).skip(skip).limit(Number(limit));
     }
 
     const total = await Campaign.countDocuments(query);
 
-    res.status(200).json({ campaigns, total, page: Number(page), totalPages: Math.ceil(total / limit) });
+    const campaignsWithSavedState = campaigns.map(c => {
+      const obj = c instanceof mongoose.Document ? c.toObject({ virtuals: true }) : c;
+      if (req.uid) {
+        // Handle both aggregate objects and Mongoose documents
+        const savedByArray = (c instanceof mongoose.Document) ? c.savedBy : (c.savedBy || []);
+        obj.isSavedByMe = savedByArray.some(s => s?.toString() === req.uid);
+      }
+      delete obj.savedBy; 
+      return obj;
+    });
+
+    res.status(200).json({ campaigns: campaignsWithSavedState, total, page: Number(page), totalPages: Math.ceil(total / limit) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
@@ -269,9 +332,17 @@ export const getFilteredCampaigns = async (req, res) => {
 export const getFeaturedCampaigns = async (req, res) => {
   try {
     const campaigns = await Campaign.find({ isFeatured: true, status: "active" })
-      .select("title coverImage goalAmount currentAmount endDate creatorUsername category status recommendations donations tagline")
+      .select("title coverImage goalAmount currentAmount endDate creatorUsername category status recommendations donations tagline savedBy")
       .limit(6).sort({ updatedAt: -1 });
-    res.status(200).json({ success: true, campaigns });
+
+    const campaignsWithSavedState = campaigns.map(c => {
+      const obj = c.toObject({ virtuals: true });
+      if (req.uid) obj.isSavedByMe = c.savedBy.some(s => s?.toString() === req.uid);
+      delete obj.savedBy;
+      return obj;
+    });
+
+    res.status(200).json({ success: true, campaigns: campaignsWithSavedState });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -284,9 +355,17 @@ export const getTrendingCampaigns = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 6;
     const campaigns = await Campaign.find({ status: "active" })
-      .select("title coverImage goalAmount currentAmount endDate creatorUsername category status recommendations donations tagline trendingScore")
+      .select("title coverImage goalAmount currentAmount endDate creatorUsername category status recommendations donations tagline trendingScore savedBy")
       .sort({ trendingScore: -1 }).limit(limit);
-    res.status(200).json({ success: true, campaigns });
+
+    const campaignsWithSavedState = campaigns.map(c => {
+      const obj = c.toObject({ virtuals: true });
+      if (req.uid) obj.isSavedByMe = c.savedBy.some(s => s?.toString() === req.uid);
+      delete obj.savedBy;
+      return obj;
+    });
+
+    res.status(200).json({ success: true, campaigns: campaignsWithSavedState });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -299,9 +378,17 @@ export const getNewestCampaigns = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 6;
     const campaigns = await Campaign.find({ status: "active" })
-      .select("title coverImage goalAmount currentAmount endDate creatorUsername category status recommendations donations tagline")
+      .select("title coverImage goalAmount currentAmount endDate creatorUsername category status recommendations donations tagline savedBy")
       .sort({ createdAt: -1 }).limit(limit);
-    res.status(200).json({ success: true, campaigns });
+
+    const campaignsWithSavedState = campaigns.map(c => {
+      const obj = c.toObject({ virtuals: true });
+      if (req.uid) obj.isSavedByMe = c.savedBy.some(s => s?.toString() === req.uid);
+      delete obj.savedBy;
+      return obj;
+    });
+
+    res.status(200).json({ success: true, campaigns: campaignsWithSavedState });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -690,7 +777,7 @@ export const uploadAdditionalDocuments = async (req, res) => {
     if (documents?.length) {
       for (const doc of documents) {
         if (doc.startsWith('data:')) {
-          const r = await uploadImage(doc, `campaign_docs/${Date.now()}_${Math.random()}`);
+          const r = await uploadImage(doc, `campaign_docs/${Date.now()}_${Math.random()}`, { type: "authenticated" });
           uploadedDocs.push(r.secure_url);
         } else {
           uploadedDocs.push(doc);

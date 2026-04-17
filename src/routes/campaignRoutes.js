@@ -31,15 +31,15 @@ import { verifyJwtOrLogout, optionalVerifyToken } from '../middleware/authMiddle
 const router = express.Router();
 
 // ── Public discovery ──────────────────────────────────────────────────────────
-router.get('/featured',          getFeaturedCampaigns);
-router.get('/trending',          getTrendingCampaigns);
-router.get('/newest',            getNewestCampaigns);
-router.get('/all',               getAllCampaigns);
-router.get('/search',            getFilteredCampaigns);
+router.get('/featured',          optionalVerifyToken, getFeaturedCampaigns);
+router.get('/trending',          optionalVerifyToken, getTrendingCampaigns);
+router.get('/newest',            optionalVerifyToken, getNewestCampaigns);
+router.get('/all',               optionalVerifyToken, getAllCampaigns);
+router.get('/search',            optionalVerifyToken, getFilteredCampaigns);
 router.get('/platform-settings', getPublicPlatformSettings);
 
 // ── Authenticated user routes ─────────────────────────────────────────────────
-router.get('/my-campaigns',      authenticate, getUserCampaigns);
+router.get('/my-missions',       authenticate, getUserCampaigns);
 router.get('/saved',             authenticate, getSavedCampaigns);
 router.post('/create',           authenticate, createCampaign);
 
