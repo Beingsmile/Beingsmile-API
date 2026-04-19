@@ -3,8 +3,9 @@ import User from "../models/User.js";
 import OTP from "../models/OTP.js";
 import generateToken, { COOKIE_OPTIONS } from "../utils/jwt.js";
 import { generateUniqueSlug } from "../utils/userUtils.js";
-import { sendOTPEmail } from "../utils/emailUtils.js";
+import { sendOTPEmail, sendResetPasswordEmail } from "../utils/emailUtils.js";
 import Notification from "../models/Notification.js";
+import { adminAuth } from "../config/firebaseAdmin.js";
 
 // Register
 export const register = async (req, res) => {
@@ -48,13 +49,24 @@ export const register = async (req, res) => {
 // Login
 export const login = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, uid } = req.body;
+    console.log(`🔐 Login attempt: email=${email}, uid=${uid}`);
 
-    // Find user
-    const user = await User.findOne({ email });
+    let user;
+    if (uid) {
+      user = await User.findOne({ firebaseUid: uid });
+    }
+    
+    if (!user && email) {
+      user = await User.findOne({ email: email.toLowerCase().trim() });
+    }
+
     if (!user) {
+      console.log(`❌ Login failed: User not found for email=${email}, uid=${uid}`);
       return res.status(400).json({ message: "Invalid credentials" });
     }
+
+    console.log(`✅ Login successful for user: ${user.email} (ID: ${user._id})`);
 
     // Check email verification
     if (!user.isEmailVerified) {
@@ -132,6 +144,46 @@ export const verifyOTP = async (req, res) => {
 
     res.status(200).json({ success: true, message: "Email verified successfully" });
   } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Forgot Password
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: "Email is required" });
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "No user found with this email" });
+    }
+
+    // Generate Firebase Reset Link
+    const actionCodeSettings = {
+      url: `${process.env.FRONTEND_URL}/reset-password`,
+      handleCodeInApp: true,
+    };
+
+    if (!adminAuth) {
+      throw new Error("Firebase Admin SDK not initialized. Please check service account configuration.");
+    }
+    const firebaseResetLink = await adminAuth.generatePasswordResetLink(email, actionCodeSettings);
+
+    // Extract oobCode to build a direct link to our frontend
+    const urlObj = new URL(firebaseResetLink);
+    const oobCode = urlObj.searchParams.get("oobCode");
+    const directResetLink = `${process.env.FRONTEND_URL}/reset-password?oobCode=${oobCode}`;
+
+    // Send Custom Email with direct link
+    const emailSent = await sendResetPasswordEmail(email, directResetLink);
+    if (!emailSent) {
+      return res.status(500).json({ message: "Failed to send reset email" });
+    }
+
+    res.status(200).json({ success: true, message: "Custom reset link sent to your email" });
+  } catch (err) {
+    console.error("Forgot password error:", err);
     res.status(500).json({ message: err.message });
   }
 };

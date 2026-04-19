@@ -153,7 +153,38 @@ export const getVerificationRequests = async (req, res) => {
     const requests = await VerificationRequest.find(filter)
       .populate('user', 'name email avatar userType')
       .sort({ createdAt: -1 });
-    res.json({ success: true, requests });
+
+    // For each request, check if the submitted ID is already used by a verified user
+    const enrichedRequests = await Promise.all(
+      requests.map(async (req) => {
+        const reqObj = req.toObject();
+        try {
+          const idHash = hashIdentityNumber(reqObj.identityNumber);
+          const duplicateUser = await User.findOne({
+            "identity.idHash": idHash,
+            "identity.isVerified": true,
+          }).select("name email avatar");
+
+          if (duplicateUser) {
+            reqObj.duplicateWarning = {
+              isDuplicate: true,
+              conflictingUser: {
+                name: duplicateUser.name,
+                email: duplicateUser.email,
+                avatar: duplicateUser.avatar,
+              },
+            };
+          } else {
+            reqObj.duplicateWarning = { isDuplicate: false };
+          }
+        } catch (_) {
+          reqObj.duplicateWarning = { isDuplicate: false };
+        }
+        return reqObj;
+      })
+    );
+
+    res.json({ success: true, requests: enrichedRequests });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

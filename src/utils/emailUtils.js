@@ -140,3 +140,47 @@ export const sendDonationReceiptEmail = async (email, donation) => {
     return false;
   }
 };
+export const sendResetPasswordEmail = async (email, resetLink) => {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+     console.error("❌ EMAIL_USER or EMAIL_PASS not found. Skipping reset email.");
+     return false;
+  }
+
+  const mailOptions = {
+    from: `"Beingsmile Team" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: "Reset Your Beingsmile Password",
+    html: `
+      <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: auto; padding: 40px; color: #1a1a1a; background: #ffffff; border-radius: 24px; border: 1px solid #e5f0ea;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <div style="background: #2D6A4F; width: 60px; height: 60px; border-radius: 18px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 15px;">
+            <span style="color: white; font-size: 32px;">❤</span>
+          </div>
+          <h1 style="color: #2D6A4F; margin: 0; font-size: 28px; font-weight: 900; letter-spacing: -1px;">BeingSmile</h1>
+        </div>
+
+        <div style="background: #EDFAF3; border-radius: 20px; padding: 30px; margin-bottom: 30px; text-align: center;">
+          <h2 style="color: #2D6A4F; margin-bottom: 15px; font-size: 22px; font-weight: 800;">Password Recovery</h2>
+          <p style="color: #4a4a4a; font-size: 15px; line-height: 1.6;">You requested a password reset for your BeingSmile account. Click the button below to secure your account with a new password.</p>
+          
+          <a href="${resetLink}" style="display: inline-block; background: #2D6A4F; color: white; padding: 18px 40px; border-radius: 14px; text-decoration: none; font-weight: 900; font-size: 14px; text-transform: uppercase; margin-top: 25px; box-shadow: 0 10px 20px rgba(45,106,79,0.2);">Reset My Password</a>
+          
+          <p style="color: #6a6a6a; font-size: 12px; margin-top: 25px;">This link will take you to our secure reset page and expires soon.</p>
+        </div>
+
+        <div style="text-align: center; padding-top: 20px; border-top: 1px solid #f0f0f0;">
+          <p style="color: #a0a0a0; font-size: 11px; line-height: 1.6;">If you didn't request this, you can safely ignore this email. Someone probably typed your email by mistake.</p>
+          <p style="color: #2D6A4F; font-size: 10px; font-weight: 800; text-transform: uppercase; margin-top: 15px;">BeingSmile Humanitarian Foundation</p>
+        </div>
+      </div>
+    `,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return true;
+  } catch (error) {
+    console.error("❌ Reset Email Error:", error);
+    return false;
+  }
+};

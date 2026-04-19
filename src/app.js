@@ -30,7 +30,9 @@ const allowedOrigins = [
   'https://beingsmile.org',
   'https://sandbox.aamarpay.com',
   'https://secure.aamarpay.com',
+  process.env.FRONTEND_URL,
 ];
+
 
 // CORS middleware
 const corsOptions = {
