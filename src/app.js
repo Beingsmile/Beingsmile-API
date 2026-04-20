@@ -28,6 +28,7 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
   'https://beingsmile.org',
+  "https://beingsmile-api-bio1.onrender.com",
   'https://sandbox.aamarpay.com',
   'https://secure.aamarpay.com',
   process.env.FRONTEND_URL,
@@ -39,7 +40,7 @@ const corsOptions = {
   origin: function (origin, callback) {
     // allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
+
     if (allowedOrigins.indexOf(origin) !== -1 || origin.includes('aamarpay.com')) {
       callback(null, true);
     } else {
