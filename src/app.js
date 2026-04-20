@@ -25,15 +25,14 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'https://beingsmile.org',
-  "https://beingsmile-api-bio1.onrender.com",
-  'https://sandbox.aamarpay.com',
-  'https://secure.aamarpay.com',
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "https://beingsmile.org",
+  "https://sandbox.aamarpay.com",
+  "https://secure.aamarpay.com",
+  "https://beingsmile-frontend-m78z.onrender.com",
   process.env.FRONTEND_URL,
 ];
-
 
 // CORS middleware
 const corsOptions = {
@@ -41,7 +40,11 @@ const corsOptions = {
     // allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.indexOf(origin) !== -1 || origin.includes('aamarpay.com')) {
+    if (
+      allowedOrigins.indexOf(origin) !== -1 ||
+      origin.includes("aamarpay.com") ||
+      origin.includes("onrender.com")
+    ) {
       callback(null, true);
     } else {
       callback(null, false);
